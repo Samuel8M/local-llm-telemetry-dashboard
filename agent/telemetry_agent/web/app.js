@@ -19,6 +19,16 @@ const TOKEN = (() => {
   try { return sessionStorage.getItem('labToken'); } catch (e) { return null; }
 })();
 
+// A newly launched helper may reuse the same port. Pasting its new launch link
+// into an old tab is a hash-only navigation, so explicitly reload with the new token.
+window.addEventListener('hashchange', () => {
+  const match = location.hash.match(/^#t=([\w-]+)$/);
+  if (!match) return;
+  try { sessionStorage.setItem('labToken', match[1]); } catch (_) { /* private mode */ }
+  history.replaceState(null, '', location.pathname);
+  location.reload();
+});
+
 async function api(path, body) {
   const opts = { method: body === undefined ? 'GET' : 'POST', headers: { 'X-Lab-Token': TOKEN || '' } };
   if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
