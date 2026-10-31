@@ -86,7 +86,7 @@ function stepCard(s, active) {
       : `<button class="btn primary" data-approve="${esc(s.id)}">${s.error ? 'Try again' : 'Run this check'}</button>`;
   }
   const body = (open || s.running) ? `<p>${esc(s.why)}</p><dl><dt>What happens on your laptop</dt><dd>${esc(s.does)}</dd>
-      ${s.command ? `<dt>Perform this step yourself</dt><dd><code class="cmd">${esc(s.command)}</code></dd>` : ''}</dl>` : '';
+      ${s.command ? `<dt>Perform this step yourself</dt><dd><code class="cmd">${esc(s.command)}</code> <button class="btn small" data-copy-command="${esc(s.command)}">Copy command</button></dd>` : ''}</dl>` : '';
   const progress = s.running ? `<div class="progress ${s.progress == null ? 'indeterminate' : ''}"><span style="width:${s.progress == null ? 30 : Math.round(s.progress * 100)}%"></span></div>
       ${s.detail ? `<div class="small muted">${esc(s.detail)}</div>` : ''}` : '';
   return `<article class="card step ${active && !s.done ? 'active' : ''}" id="step-${esc(s.id)}">
@@ -162,12 +162,15 @@ function renderModel() {
   const budgetNote = `<p class="small muted">Available RAM: ${esc(r.planning_ram_gb)} GiB. Project base (lab, Python and runtime): ${esc(r.budget.non_model_gib)} GiB. Space left under the 10 GiB project cap for one model: ${esc(r.project_headroom_gib)} GiB. Other installed Ollama models: ${esc(r.budget.installed_models_gib)} GiB, reported separately. ${r.budget_verified ? 'Runtime inventory measured.' : 'Open Ollama to verify its model inventory before running.'}</p>`;
   if (!r.pick) { $('#model-body').innerHTML = `<p class="note warn">${esc(r.explanation)}</p>${budgetNote}`; return; }
   const have = new Set(state.status.runtime.lab_models);
+  const installed = [...have].sort();
   const opts = r.options.map(o => `<label class="option ${o.name === state.model ? 'selected' : ''}">
       <input type="radio" name="model" value="${esc(o.name)}" ${o.name === state.model ? 'checked' : ''}>
       <div><div><strong>${esc(o.name)}</strong>${o.name === r.pick.name ? '<span class="tag">Planning candidate</span>' : ''}${have.has(o.name) ? '<span class="tag ok">Already downloaded</span>' : ''}</div>
         <div class="small muted">${o.params_billion}B parameters · ${o.download_file_size_gb} GiB catalog estimate · provisional RAM floor ${o.needs_free_ram_gb} GiB</div>
         <div class="small">${esc(o.good_for)}</div></div></label>`).join('');
-  $('#model-body').innerHTML = `<p>${esc(r.goal_why)}</p><div class="options">${opts}</div>
+  $('#model-body').innerHTML = `<p>${esc(r.goal_why)}</p>
+    ${installed.length ? `<div class="note">Already installed: <strong>${installed.map(esc).join(', ')}</strong>. To measure one of these, go straight to <strong>Predict &amp; Run</strong> and choose it there; you do not need to repeat deployment. <button class="btn small" data-goto="predict">Measure an installed model</button></div>` : ''}
+    <div class="options">${opts}</div>
     ${r.before_you_run ? `<p class="note warn">${esc(r.before_you_run)}</p>` : ''}
     <details><summary>Planning assumptions and budget</summary><p class="small" style="margin-top:6px">${esc(r.explanation)}</p>
       ${budgetNote}<p class="small muted">New downloads also require at least 2 GiB of free disk reserve. Catalog size and RAM figures are estimates; ${r.budget_verified ? 'execution will re-check the selected model.' : 'this is planning only until the runtime inventory is verified.'}</p></details>
@@ -443,6 +446,11 @@ document.addEventListener('click', async e => {
   const d = t.dataset;
   if (d.goto) { show(d.goto); return; }
   if (d.goal) { chooseGoal(d.goal); return; }
+  if (d.copyCommand) {
+    try { await navigator.clipboard.writeText(d.copyCommand); t.textContent = 'Copied'; setTimeout(() => { t.textContent = 'Copy command'; }, 1800); }
+    catch (_) { t.textContent = 'Select the command above to copy'; }
+    return;
+  }
   if ('useModel' in d) { loadPlan(); return; }
   if ('recheck' in d) { await refreshStatus(); loadPlan(); return; }
   if ('try' in d) { tryModel(); return; }
