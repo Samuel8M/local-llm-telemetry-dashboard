@@ -1,5 +1,7 @@
 # Local AI Lab learning portal
 
+Open the [published site](https://aryawuyitong.github.io/local-llm-telemetry-dashboard/). It serves only this static `portal/` directory; the local helper and model stay on each learner's computer.
+
 A buildless, dependency-free teaching and interpretation interface. It has four views:
 
 - **Learn:** six concept explanations and an optional ten-item pre/post knowledge check.

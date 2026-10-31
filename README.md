@@ -36,7 +36,9 @@ The `.command`/`.bat` launchers are optional conveniences after reviewing them. 
 
 ## Open the learning website
 
-From the repository root:
+Visit the public [Local AI Lab website](https://aryawuyitong.github.io/local-llm-telemetry-dashboard/) to use the lessons, quizzes, synthetic examples, and local JSON import. GitHub Pages publishes the static `portal/` directory when it changes on `main`. No Python or model is needed for these browser features.
+
+To run the same website locally instead, from the repository root:
 
 ```sh
 python3 -m http.server 4173 --bind 127.0.0.1 --directory portal
@@ -44,7 +46,7 @@ python3 -m http.server 4173 --bind 127.0.0.1 --directory portal
 
 On Windows replace `python3` with `py -3`. Open `http://127.0.0.1:4173`. The four views are **Learn → Deploy → Predict & Run → Results**. Try the clearly labeled synthetic examples to explore charts before a real experiment. Example numbers are invented and are not project evidence.
 
-The static website and helper have separate roles. The website never connects to localhost APIs or starts inference. Move results between them by explicitly downloading and importing JSON. The static `portal/` directory is ready for static hosting, but this change does not publish a hosted site.
+The public website and local helper have separate roles. The website never connects to localhost APIs or starts inference. Move results between them by explicitly downloading and importing JSON. Do not paste the helper's private session URL or token into the public website.
 
 ## What the assistant can do
 
