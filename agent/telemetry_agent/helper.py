@@ -153,10 +153,10 @@ class Lab:
                   does="Open/start it yourself. This helper does not launch programs or change system settings."),
             _step("pull_model", f"Manually download {model}", done=model in rt["models"], kind="manual",
                   command=f"{cli} pull {model}", why="Download the exact catalog tag, then verify the result.",
-                  does=f"The catalog estimates about {m['size_gb']} GiB; the actual artifact and quantization must be checked. Count the whole lab/runtime and any other models toward the total budget."),
+                  does=f"The catalog estimates about {m['size_gb']} GiB; the actual artifact and quantization must be checked. The 10 GiB project cap counts this selected model plus the lab, Python and runtime. Pre-existing unrelated models are reported separately."),
             _step("verify_install", "Verify the manual steps", done=False, action="check_install", args={"up_to_step": 4},
                   why="Check observable prerequisites without hiding the installation process.",
-                  does="Read runtime/model state, provenance and total disk budget. This does not install or download anything."),
+                  does="Read runtime/model state, provenance and the selected project's disk budget. This does not install or download anything."),
             _step("first_prompt", "Run a bounded first prompt", done=False, args={"model": model},
                   why="A real response verifies that the prepared model can perform inference.",
                   does="After resource checks, ask the selected model for a short greeting. Timing depends on this device."),
@@ -237,7 +237,7 @@ class Lab:
 
     def _do_first_prompt(self, job, model):
         self.tools.ensure_model_ready(model)
-        job["log"].append("Running a bounded first prompt after provenance and total-budget checks.")
+        job["log"].append("Running a bounded first prompt after provenance and project-budget checks.")
         start = time.perf_counter()
         reply = ChatClient(self.settings.base_url, model, timeout=120).chat(
             [{"role": "user", "content": "Say hello in three words."}], max_tokens=12)

@@ -47,13 +47,30 @@ class ToolTests(unittest.TestCase):
         self.assertEqual(out["planning_ram_gb"], 1)
         self.assertIsNone(out["recommended"])
 
-    def test_counts_other_models_and_runtime_in_total_budget(self):
+    def test_unrelated_models_are_reported_but_do_not_block_project_model(self):
         inventory = [{"name": "unrelated-a", "size": 5 * 1024**3, "digest": "a" * 64, "details": {}},
                      {"name": "unrelated-b", "size": 5 * 1024**3, "digest": "b" * 64, "details": {}}]
         with mock.patch.object(self.tb, "_inventory", return_value=(inventory, True)):
             out = self.tb.recommend_model(available_ram_gb=64, free_disk_gb=100)
         self.assertEqual(out["budget"]["total_installed_gib"], 11)
-        self.assertIsNone(out["recommended"])
+        self.assertIsNotNone(out["recommended"])
+        self.assertEqual(out["project_headroom_gib"], 9)
+
+    def test_execution_counts_selected_model_but_not_unrelated_models(self):
+        inventory = [INVENTORY[0], {"name": "unrelated-large", "size": 12 * 1024**3,
+                                    "digest": "b" * 64, "details": {}}]
+        with mock.patch.object(self.tb, "_inventory", return_value=(inventory, True)):
+            out = self.tb.ensure_model_ready("qwen2.5:0.5b")
+        self.assertGreater(out["budget"]["total_installed_gib"], 10)
+        self.assertLess(out["budget"]["project_total_gib"], 10)
+        self.assertGreater(out["budget"]["other_installed_models_gib"], 10)
+
+    def test_selected_model_still_obeys_project_disk_cap(self):
+        oversized = [{**INVENTORY[0], "size": 10 * 1024**3}]
+        with mock.patch.object(self.tb, "_inventory", return_value=(oversized, True)):
+            self.assertIsNone(self.tb.recommend_model(available_ram_gb=1.5)["recommended"])
+            with self.assertRaisesRegex(ValueError, "selected model exceed"):
+                self.tb.ensure_model_ready("qwen2.5:0.5b")
 
     def test_predictions_and_default_three_repetitions_reach_collector(self):
         summary = {"median_tps": 20, "peak_ram_mb": 2048, "saved_to": "local-session.json"}

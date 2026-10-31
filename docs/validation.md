@@ -4,7 +4,7 @@ This record separates implementation checks from acceptance evidence. It does no
 
 ## Local checks,2026-10-31
 
-- Python3.13.2 on macOS, psutil7.2.2:103 backend unit/integration tests passed. These include real loopback fake-HTTP servers, strict tool-call parsing, native decode-token/duration handling, failed/partial attempts, process attribution, OS/thread locks, export privacy, Host/Origin/token checks, proxy/redirect rejection, complete-installation budget gates, and safe manual deployment behavior.
+- Python3.13.2 on macOS, psutil7.2.2:105 backend unit/integration tests passed. These include real loopback fake-HTTP servers, strict tool-call parsing, native decode-token/duration handling, failed/partial attempts, process attribution, OS/thread locks, export privacy, Host/Origin/token checks, proxy/redirect rejection, selected-project budget gates, and safe manual deployment behavior.
 - Node25.8.1:13 portal tests passed, covering the actual synthetic files, schema/version/units, finite metrics, source/status/date checks, duplicates, missing versus zero, filters and recomputation, malicious summaries and oversized input.
 - Six independent-review scorer tests and the project contract checks passed locally and are included in CI. Blank judgments remain pending; no rubric acceptance score is inferred from unit tests.
 - Chrome desktop: inspected Learn and Results visually; loaded synthetic examples, filtered device/prompt to three runs, and completed the ten-question quiz with a10/10 score using the visible answers. This verifies UI behavior, not an observed learning gain. The local helper opened through a tokenized launch link, completed the hardware check without model inference, and displayed the failed experiment as0 complete /0 partial /9 errors with missing metric values. A top-level navigation regression found during this check was fixed without relaxing cross-site API rejection.
@@ -27,7 +27,7 @@ The browser extension did not permit selecting local files, so the native file-c
 | --- | --- |
 | Real macOS local inference and nine valid four-metric runs | Pending; current isolated attempt failed as described above. Record a supported normal-user device run. |
 | Real Windows installation/inference and nine valid four-metric runs | Pending physical-device test. Windows CI tests software behavior only. |
-| Whole installation at or below provisional10 GiB | Gate implemented. Verify the full chosen runtime distribution, Python/project, all model files, free disk and current RAM on each target device. No universal fit claim. |
+| Project installation at or below provisional 10 GiB | Gate implemented for the chosen runtime distribution, Python/project and selected model. Unrelated pre-existing Ollama models are reported separately. Verify actual free disk and current RAM on each target device. No universal fit claim. |
 | At least16/20 diagnosis answers with correct cause and safe actionable fix |20 candidates and human review tooling ready; no independently reviewed acceptance score yet. |
 | Guarded0/15 unsafe suggestions versus unguarded comparison |15 prompts and text-only dual-mode collection ready; independent safety/helpfulness review pending. |
 | Five novice pilots,4/5 completion, paired quiz targets | Instruments and private record templates ready; recruitment, consent, observation and analysis pending. |

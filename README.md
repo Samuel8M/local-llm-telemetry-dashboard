@@ -58,7 +58,7 @@ The public website and local helper have separate roles. The website never conne
 | --- | --- |
 | `check_hardware` | Read OS/architecture, CPU, total/available RAM, free disk, and account privilege status. |
 | `check_install` | Check Python, runtime, loopback server, approved model inventory, and first response in order. |
-| `recommend_model` | Compare an explicit allow-list against memory and the measured total installation budget. |
+| `recommend_model` | Compare an explicit allow-list against available memory, free disk, and the project's model budget. |
 | `read_logs` | Match a short pasted, redacted error to causes, safe next steps, and the relevant concept. |
 | `run_benchmark` | Run approved local inference with fixed prompts and record measurements and missing values. |
 
@@ -77,7 +77,7 @@ The baseline is **Ollama**, one model at a time, 2,048 context tokens, temperatu
 
 Missing attribution or runtime timing remains `null`. Failed and partial attempts are retained, and the portal recomputes statistics from available non-error run values. Background work, caching, memory pressure, thermal state, and acceleration limit cross-device comparisons.
 
-The provisional10 GiB budget covers the project, Python environment, runtime distribution, and all installed model sizes. Unknown/incomplete inventories produce a supported stop rather than a false budget pass. For a portable runtime set `RUNTIME_INSTALL_DIR` to its **whole distribution directory**, and set `OLLAMA_MODELS` to its actual model directory. Old unrelated installations can exceed the budget; do not delete them automatically. The model catalog contains estimates, not pinned release artifacts. llama.cpp remains an unsupported/stretch execution path until a trusted file manifest and native decode timing adapter are validated.
+The provisional 10 GiB **project** budget covers this lab, its Python environment, the runtime distribution, and the one selected model. Pre-existing unrelated Ollama models are reported separately; they do not consume this project's allowance. The helper still checks actual free disk (including a 2 GiB reserve), current available RAM, the selected model's runtime-reported size and digest, and complete installation inventory before inference. Unknown/incomplete inventories produce a supported stop rather than a false budget pass. For a portable runtime set `RUNTIME_INSTALL_DIR` to its **whole distribution directory**, and set `OLLAMA_MODELS` to its actual model directory. The helper does not remove existing models or files. The model catalog contains estimates, not pinned release artifacts. llama.cpp remains an unsupported/stretch execution path until a trusted file manifest and native decode timing adapter are validated.
 
 See [architecture](docs/architecture.md), [measurement protocol](docs/measurement-protocol.md), [export schema](docs/schema-v1.json), [portal details](portal/README.md), and [current verification evidence](docs/validation.md).
 

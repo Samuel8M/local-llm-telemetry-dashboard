@@ -130,7 +130,7 @@ function renderLaptop() {
       ${fact('System', `${hw.os} ${hw.os_version}`)}
       ${fact('Chip', hw.cpu_model, `${hw.cpu_cores_physical} cores · ${hw.arch}`)}
       ${fact('Memory (RAM)', `${hw.total_ram_gb} GiB`, `${hw.available_ram_gb} GiB free right now`)}
-      ${fact('Free disk', `${hw.free_disk_gb} GiB`, '10 GiB total budget; verification required')}
+      ${fact('Free disk', `${hw.free_disk_gb} GiB`, '10 GiB project cap: lab, runtime and one selected model')}
       ${fact('Graphics', hw.gpu)}
     </div>${toolChip('check_hardware', 'read only')}
     ${hw.supported_stop ? `<p class="note warn">${esc(hw.supported_stop)}</p>` : ''}`;
@@ -157,7 +157,8 @@ async function chooseGoal(goal) {
 
 function renderModel() {
   const r = state.rec;
-  if (!r.pick) { $('#model-body').innerHTML = `<p class="note warn">${esc(r.explanation)}</p>`; return; }
+  const budgetNote = `<p class="small muted">Available RAM: ${esc(r.planning_ram_gb)} GiB. Project base (lab, Python and runtime): ${esc(r.budget.non_model_gib)} GiB. Space left under the 10 GiB project cap for one model: ${esc(r.project_headroom_gib)} GiB. Other installed Ollama models: ${esc(r.budget.installed_models_gib)} GiB, reported separately. ${r.budget_verified ? 'Runtime inventory measured.' : 'Open Ollama to verify its model inventory before running.'}</p>`;
+  if (!r.pick) { $('#model-body').innerHTML = `<p class="note warn">${esc(r.explanation)}</p>${budgetNote}`; return; }
   const have = new Set(state.status.runtime.lab_models);
   const opts = r.options.map(o => `<label class="option ${o.name === state.model ? 'selected' : ''}">
       <input type="radio" name="model" value="${esc(o.name)}" ${o.name === state.model ? 'checked' : ''}>
@@ -167,7 +168,7 @@ function renderModel() {
   $('#model-body').innerHTML = `<p>${esc(r.goal_why)}</p><div class="options">${opts}</div>
     ${r.before_you_run ? `<p class="note warn">${esc(r.before_you_run)}</p>` : ''}
     <details><summary>Planning assumptions and budget</summary><p class="small" style="margin-top:6px">${esc(r.explanation)}</p>
-      <p class="small muted">${r.planning_ram_gb} GiB available RAM; ${r.disk_cap_gb} GiB remaining budget. Whole footprint: ${r.budget_verified ? 'measured' : 'unverified; planning only'}.</p></details>
+      ${budgetNote}<p class="small muted">New downloads also require at least 2 GiB of free disk reserve. Catalog size and RAM figures are estimates; ${r.budget_verified ? 'execution will re-check the selected model.' : 'this is planning only until the runtime inventory is verified.'}</p></details>
     ${toolChip('recommend_model', 'uses your RAM, free disk and our approved model list')}
     <div class="actions"><button class="btn primary" data-use-model>Continue with ${esc(state.model)}</button></div>`;
 }

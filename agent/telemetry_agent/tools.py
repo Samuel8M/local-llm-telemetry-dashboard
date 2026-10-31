@@ -182,7 +182,7 @@ class Toolbox:
             return [], False
 
     def budget_state(self) -> dict:
-        """Conservative total of Python/lab/runtime plus all installed model sizes."""
+        """Report the measured project base and the existing runtime model library."""
         if self._footprint_cache is None or time.monotonic() - self._footprint_cache[0] > 5:
             self._footprint_cache = (time.monotonic(), installation_footprint(self.settings))
         footprint = dict(self._footprint_cache[1])
@@ -220,8 +220,10 @@ class Toolbox:
             raise ValueError("Runtime model digest is unavailable or invalid; provenance cannot be recorded.")
         if not state["verified"]:
             raise ValueError("Total installation footprint is unverified. Verify runtime installation location (RUNTIME_INSTALL_DIR if needed) and the full filesystem/inventory measurement before inference.")
-        if state["total_installed_gib"] > self.settings.disk_budget_gb:
-            raise ValueError("Total lab, Python/runtime and installed models exceed the disk budget. Stop; the helper will not remove files.")
+        selected_model_gib = row["size"] / GB
+        project_total_gib = state["non_model_gib"] + selected_model_gib
+        if project_total_gib > self.settings.disk_budget_gb:
+            raise ValueError("The lab, Python/runtime and selected model exceed the project disk budget. Choose a smaller approved model; the helper will not remove files.")
         if check_resources:
             hw = hardware_info(self.settings.models_dir)
             if hw["running_as_admin"]:
@@ -231,14 +233,19 @@ class Toolbox:
             catalog = next(m for m in self.allow_list if m["ollama_tag"] == model)
             if hw["available_ram_gb"] < catalog["min_ram_gb"]:
                 raise ValueError("Currently available RAM is below the catalog's provisional minimum. Stop and choose a smaller supported model.")
+        budget = {k: v for k, v in state.items() if k != "inventory"}
+        budget.update({"selected_model_gib": round(selected_model_gib, 6),
+                       "project_total_gib": round(project_total_gib, 6),
+                       "other_installed_models_gib": round(max(0, state["installed_models_gib"] - selected_model_gib), 6),
+                       "scope": "Project code, Python/runtime and the selected model; unrelated pre-existing models are reported separately."})
         return {"model": model, "model_digest": digest,
                 "provenance": "Runtime-reported digest for exact allow-listed tag; publisher origin and tag-to-digest pin are not independently verified.",
-                "budget": {k: v for k, v in state.items() if k != "inventory"}}
+                "budget": budget}
 
     def run_benchmark(self, model: str, repeats: int = 3,
                       guess_tps: float | None = None, guess_ram_gb: float | None = None) -> dict:
         """Benchmark an installed exact allow-listed local model after provenance,
-        privilege, available-RAM and whole-installation disk checks. Default protocol:
+        privilege, available-RAM and selected-project disk checks. Default protocol:
         a warm-up, three fixed prompts and three measured repetitions per prompt.
         Predictions are optional finite nonnegative numbers, passed into the collector
         and kept separate from observations. No URL/path/shell/runtime parameters are
@@ -287,39 +294,50 @@ class Toolbox:
 
     def recommend_model(self, available_ram_gb: float | None = None, free_disk_gb: float | None = None) -> dict:
         """Plan from currently available RAM, free disk and total lab/runtime/model
-        footprint, never half of total RAM. Optional finite nonnegative overrides
+        footprint for the selected project model, never half of total RAM. Optional finite nonnegative overrides
         are explicitly hypothetical and cannot bypass execution-time checks.
         Catalog sizes/RAM are provisional estimates, not verified performance or
-        quality rankings. Include existing models and Python/runtime overhead;
-        unverified inventory is labeled planning-only, never a fit guarantee.
+        quality rankings. Report pre-existing models without charging unrelated
+        models to this project's cap; unverified inventory is planning-only.
         """
         _number(available_ram_gb, "available_ram_gb")
         _number(free_disk_gb, "free_disk_gb")
         hw, state = hardware_info(self.settings.models_dir), self.budget_state()
         ram = available_ram_gb if available_ram_gb is not None else hw["available_ram_gb"]
         disk = free_disk_gb if free_disk_gb is not None else hw["free_disk_gb"]
-        installed = {r["name"] for r in state["inventory"]}
-        remaining_budget = max(0, self.settings.disk_budget_gb - state["total_installed_gib"])
-        disk_cap = min(remaining_budget, max(0, disk - 2.0))
+        installed = {r["name"]: r["size"] / GB for r in state["inventory"]}
+        project_headroom = max(0, self.settings.disk_budget_gb - state["non_model_gib"])
+        free_after_reserve = max(0, disk - 2.0)
+        disk_cap = min(project_headroom, free_after_reserve)
         fits = [m for m in self.allow_list if m["min_ram_gb"] <= ram
-                and (0 if m["ollama_tag"] in installed else m["size_gb"]) <= disk_cap]
-        if state["total_installed_gib"] > self.settings.disk_budget_gb:
-            fits = []
+                and (installed.get(m["ollama_tag"], m["size_gb"]) <= project_headroom)
+                and disk >= 2.0
+                and (0 if m["ollama_tag"] in installed else m["size_gb"]) <= free_after_reserve]
         common = {"planning_ram_gb": ram, "free_ram_now_gb": hw["available_ram_gb"],
-                  "disk_cap_gb": round(disk_cap, 3), "budget": {k: v for k, v in state.items() if k != "inventory"},
+                  "disk_cap_gb": round(disk_cap, 3), "project_headroom_gib": round(project_headroom, 3),
+                  "free_disk_after_reserve_gib": round(free_after_reserve, 3),
+                  "budget": {k: v for k, v in state.items() if k != "inventory"},
                   "hypothetical": available_ram_gb is not None or free_disk_gb is not None,
                   "budget_verified": state["verified"], "catalog_estimates_verified": False}
         if not fits:
+            if ram < min(m["min_ram_gb"] for m in self.allow_list):
+                reason = "Currently available RAM is below the smallest approved model's provisional minimum. Close other apps only if appropriate, then re-check."
+            elif state["non_model_gib"] >= self.settings.disk_budget_gb:
+                reason = "The measured lab, Python and runtime already use the project's disk allowance. Check the installation footprint; no files will be removed."
+            elif disk < 2.0:
+                reason = "Less than 2 GiB of free disk reserve is available. Free space using your normal device workflow, then re-check; no files will be removed."
+            else:
+                reason = "No approved model fits both the available RAM and the project's remaining allowance for one selected model. Review the figures below; unrelated existing models are not charged to this project."
             return {**common, "recommended": None, "faster_option": None, "stronger_option": None,
-                    "explanation": "No catalog candidate fits the observed/planned available RAM and remaining total budget. Close other apps only if appropriate, or choose another supported configuration; the helper will not delete anything."}
+                    "explanation": reason}
         comfy = [m for m in fits if m["min_ram_gb"] <= 0.75 * ram]
         pool = [m for m in comfy if not m["license_gate"]] or comfy or fits
         pick = max(pool, key=lambda m: m["params_b"])
         smaller = max((m for m in fits if m["params_b"] < pick["params_b"]), key=lambda m: m["params_b"], default=None)
         larger = min((m for m in fits if m["params_b"] > pick["params_b"]), key=lambda m: m["params_b"], default=None)
         return {**common, "recommended": _brief(pick), "faster_option": _brief(smaller), "stronger_option": _brief(larger),
-                "explanation": f"{pick['ollama_tag']} is a planning candidate based on provisional catalog RAM/file estimates. Total installed models and measured non-model overhead are counted. "
-                               + ("Whole-footprint checks are available; execution will recheck current resources. " if state["verified"] else "Footprint is not fully verified: confirm it before downloading or running. ")
+                "explanation": f"{pick['ollama_tag']} is a planning candidate based on provisional catalog RAM/file estimates. The project cap covers lab/Python/runtime and one selected model; unrelated existing models are reported but excluded. "
+                               + ("Project footprint checks are available; execution will recheck current resources. " if state["verified"] else "The runtime inventory is not fully verified: start Ollama and re-check before running. ")
                                + "Smaller/larger alternatives describe parameter counts, not proven speed or answer quality.",
                 "past_benchmarks_on_this_machine": self._past_benchmarks(hw)}
 

@@ -17,6 +17,8 @@ python -m telemetry_agent bench --model qwen2.5:1.5b --repeats 3 --guess-tps 20 
 
 Set `AGENT_MODEL` when changing the chat model. `AGENT_BASE_URL` defaults to `http://127.0.0.1:11434/v1`; external runtime endpoints are rejected. Use `RUNTIME_INSTALL_DIR` for a whole portable runtime directory and `OLLAMA_MODELS` for its actual model location. The entire resource inventory must be known before inference. Read tool output for supported stop conditions instead of bypassing checks.
 
+The 10 GiB project disk gate covers this lab, its Python environment, the Ollama runtime and the one selected model. Other models already in the user's Ollama library appear in diagnostics but do not count against this project's cap. Free disk, available RAM, exact model digest and a complete runtime inventory remain execution gates.
+
 JSON is the portal exchange format. The compatibility CSV is local convenience, not the teaching portal input. Results remain in `results/` and are Git-ignored. Review aliases and metadata before sharing elsewhere. Logs and chat stay in the helper session; do not paste secrets or private documents.
 
 The old [DEMO.md](DEMO.md), [EVAL_RESULTS.md](EVAL_RESULTS.md), and `evals/` are retained as historical development material. Their earlier installation shortcuts, CSV dashboard assumptions, and scores do not supersede the current root README, source, or evaluation protocol. Use no security bypass or administrator installation workaround.
