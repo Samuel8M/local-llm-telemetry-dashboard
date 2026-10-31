@@ -179,6 +179,28 @@ class FootprintTests(unittest.TestCase):
             self.assertFalse(system._tree_bytes([project_env], [])[1])
             self.assertTrue(system._tree_bytes([project_env], [base_python])[1])
 
+    def test_venv_cfg_python_link_is_known_but_unrelated_external_link_still_fails(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp).resolve()
+            project, runtime = folder / "project", folder / "runtime"
+            env, base, python_home = project / ".venv", folder / "base", folder / "python-home"
+            (env / "bin").mkdir(parents=True)
+            base.mkdir(); python_home.mkdir(); runtime.mkdir()
+            interpreter = python_home / "python3.13"
+            interpreter.write_bytes(b"pre-existing interpreter")
+            (env / "bin" / "python3.13").symlink_to(interpreter)
+            (env / "pyvenv.cfg").write_text(f"home = {python_home}\nexecutable = {interpreter}\n", encoding="utf-8")
+            settings = Settings(runtime_install_dir=runtime, models_dir=project / "models",
+                                results_dir=project / "results", runtime_models_dir=folder / "models")
+            with mock.patch("telemetry_agent.config.ROOT", project), \
+                 mock.patch.object(system.sys, "prefix", str(env)), \
+                 mock.patch.object(system.sys, "base_prefix", str(base)):
+                self.assertTrue(system.installation_footprint(settings)["verified"])
+                unrelated = folder / "unrelated.bin"
+                unrelated.write_bytes(b"unknown external file")
+                (env / "bin" / "other-tool").symlink_to(unrelated)
+                self.assertIn("complete filesystem scan", system.installation_footprint(settings)["missing"])
+
 
 if __name__ == "__main__":
     unittest.main()

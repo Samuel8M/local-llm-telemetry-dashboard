@@ -161,6 +161,24 @@ def installation_footprint(settings) -> dict:
         # base interpreter. That known prerequisite is outside this project's
         # footprint; do not mistake the symlink for an unknown external file.
         excluded.append(Path(sys.base_prefix).resolve())
+        # Some environments retain a second versioned Python link from the
+        # interpreter recorded when the venv was created. It can differ from
+        # sys.base_prefix after a shell activates another Python distribution.
+        # Exclude only that exact, verified interpreter file, never its whole
+        # distribution or any unrelated external link.
+        config = Path(sys.prefix) / "pyvenv.cfg"
+        try:
+            values = {key.strip(): value.strip() for key, value in
+                      (line.split("=", 1) for line in config.read_text(encoding="utf-8").splitlines() if "=" in line)}
+            home_path = Path(values["home"].strip())
+            executable_path = Path(values["executable"].strip())
+            home, executable = home_path.resolve(), executable_path.resolve()
+            if (home_path.is_absolute() and executable_path.is_absolute() and executable.is_file()
+                    and executable.name.lower().startswith("python")
+                    and _within(executable, home)):
+                excluded.append(executable)
+        except (OSError, KeyError, ValueError):
+            pass
     size, complete = _tree_bytes(roots, excluded)
     known_runtime = runtime is not None and runtime.exists()
     return {"non_model_gb": round(size / GB, 6), "verified": complete and known_runtime,
