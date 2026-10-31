@@ -149,14 +149,22 @@ def installation_footprint(settings) -> dict:
         if os.environ.get("LOCALAPPDATA"):
             candidates.append(Path(os.environ["LOCALAPPDATA"]) / "Programs/Ollama")
         runtime = next((p for p in candidates if p.exists()), None)
-    roots = [ROOT, Path(sys.prefix), Path(sys.base_prefix)]
+    # The project environment is part of this lab. A pre-existing base Python
+    # distribution (for example a user's Anaconda installation) is not: it can
+    # contain unrelated packages and make a bounded scan fail on a normal setup.
+    roots = [ROOT, Path(sys.prefix)]
     if runtime is not None:
         roots.append(runtime)
     excluded = [settings.models_dir.resolve(), settings.runtime_models_dir.resolve(), settings.results_dir.resolve()]
+    if Path(sys.prefix).resolve() != Path(sys.base_prefix).resolve():
+        # A venv commonly symlinks its Python executable to the pre-existing
+        # base interpreter. That known prerequisite is outside this project's
+        # footprint; do not mistake the symlink for an unknown external file.
+        excluded.append(Path(sys.base_prefix).resolve())
     size, complete = _tree_bytes(roots, excluded)
     known_runtime = runtime is not None and runtime.exists()
     return {"non_model_gb": round(size / GB, 6), "verified": complete and known_runtime,
-            "basis": "Measured logical bytes of lab, Python environment and discovered runtime; excludes model inventory and result files.",
+            "basis": "Measured logical bytes of lab, project Python environment and discovered runtime; excludes a pre-existing base Python distribution, model inventory and result files.",
             "missing": ([] if known_runtime else ["runtime installation location"]) + ([] if complete else ["complete filesystem scan"]),
             "runtime_file_expanded_to_distribution": distribution_expanded,
             "model_storage_location_source": "explicit OLLAMA_MODELS" if "OLLAMA_MODELS" in os.environ else "conventional default; server storage location not independently verified"}

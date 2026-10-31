@@ -150,6 +150,35 @@ class FootprintTests(unittest.TestCase):
         self.assertFalse(result["verified"])
         self.assertIn("runtime installation location", result["missing"])
 
+    def test_preexisting_base_python_is_not_scanned_as_project_environment(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp).resolve()
+            project_env = folder / "project-venv"
+            base_python = folder / "preexisting-anaconda"
+            project_env.mkdir()
+            base_python.mkdir()
+            settings = Settings(runtime_install_dir=folder, models_dir=folder / "models",
+                                results_dir=folder / "results", runtime_models_dir=folder / "store")
+            with mock.patch.object(system.sys, "prefix", str(project_env)), \
+                 mock.patch.object(system.sys, "base_prefix", str(base_python)), \
+                 mock.patch.object(system, "_tree_bytes", return_value=(1024, True)) as measure:
+                result = system.installation_footprint(settings)
+            self.assertIn(project_env, measure.call_args.args[0])
+            self.assertNotIn(base_python, measure.call_args.args[0])
+            self.assertIn(base_python, measure.call_args.args[1])
+            self.assertTrue(result["verified"])
+
+    def test_venv_python_symlink_into_preexisting_base_does_not_fail_scan(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            folder = Path(tmp).resolve()
+            project_env, base_python = folder / "project-venv", folder / "preexisting-python"
+            (project_env / "bin").mkdir(parents=True)
+            base_python.mkdir()
+            (base_python / "python").write_bytes(b"existing interpreter")
+            (project_env / "bin" / "python").symlink_to(base_python / "python")
+            self.assertFalse(system._tree_bytes([project_env], [])[1])
+            self.assertTrue(system._tree_bytes([project_env], [base_python])[1])
+
 
 if __name__ == "__main__":
     unittest.main()

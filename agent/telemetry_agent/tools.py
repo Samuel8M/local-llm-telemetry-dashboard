@@ -219,7 +219,8 @@ class Toolbox:
         if not isinstance(digest, str) or not re.fullmatch(r"(?:sha256:)?[a-fA-F0-9]{64}", digest):
             raise ValueError("Runtime model digest is unavailable or invalid; provenance cannot be recorded.")
         if not state["verified"]:
-            raise ValueError("Total installation footprint is unverified. Verify runtime installation location (RUNTIME_INSTALL_DIR if needed) and the full filesystem/inventory measurement before inference.")
+            missing = ", ".join(state["missing"]) or "unknown measurement"
+            raise ValueError(f"Project footprint is unverified ({missing}). Check that Ollama is running, use this lab's .venv, and set RUNTIME_INSTALL_DIR only if the runtime lives in an unusual location.")
         selected_model_gib = row["size"] / GB
         project_total_gib = state["non_model_gib"] + selected_model_gib
         if project_total_gib > self.settings.disk_budget_gb:
