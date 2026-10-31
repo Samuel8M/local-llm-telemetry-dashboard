@@ -258,6 +258,12 @@ class Toolbox:
         try:
             validate_tool_args("run_benchmark", args)
             provenance = self.ensure_model_ready(model)
+            if ChatClient(self.settings.base_url, model).metadata(self.settings.runtime)["other_models_resident"]:
+                raise RuntimeError(
+                    "Another Ollama model is still loaded, so this benchmark would mix their memory use. "
+                    "In your terminal, run ollama ps, then ollama stop MODEL_NAME for the other model listed there. "
+                    "Return here and try again. This only unloads it from memory; it does not delete the model."
+                )
             if not _BENCHMARK_LOCK.acquire(blocking=False):
                 return {"error": "A benchmark is already running; wait for it to finish.", "busy": True}
             try:

@@ -104,6 +104,14 @@ class ToolTests(unittest.TestCase):
         self.assertEqual(out["model_digest"], "a" * 64)
         self.assertIn("not independently verified", out["provenance"])
 
+    def test_other_resident_model_stops_before_creating_partial_session(self):
+        with mock.patch.object(tools_mod.ChatClient, "metadata", return_value={"other_models_resident": True}), \
+             mock.patch.object(tools_mod.collector, "run_benchmark") as run:
+            result = self.tb.run_benchmark("qwen2.5:0.5b")
+        self.assertTrue(result["supported_stop"])
+        self.assertIn("ollama stop MODEL_NAME", result["error"])
+        run.assert_not_called()
+
     def test_unknown_model_paths_and_tag_aliases_are_not_executed(self):
         for model in ("llama3.1:70b", "qwen2.5-0.5b-instruct-q4_k_m", "../models/model.gguf", "http://evil/model"):
             with self.subTest(model=model), mock.patch.object(tools_mod.collector, "run_benchmark") as run:
