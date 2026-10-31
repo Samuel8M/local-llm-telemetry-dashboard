@@ -6,33 +6,37 @@ The repository includes a static learning portal, a separate local assistant wit
 
 ## Start here
 
-You need a **standard user account, Python 3.11 or newer**, and an officially obtained Ollama installation compatible with your device. Installation from a completely unprepared computer is not yet a verified no-admin workflow. If your organization requires administrator approval or the OS blocks an executable, stop and use its supported installation process; do not disable protections.
+There are **two pages**: the [public learning website](https://aryawuyitong.github.io/local-llm-telemetry-dashboard/) and a private Lab Helper that runs on your own computer. The public website works immediately for lessons, quizzes, and synthetic examples. For a real model run, use a standard user account and follow these steps:
 
-1. Download this repository or clone it, then open a terminal in its `agent` directory.
-2. Create an isolated Python environment and install the one dependency:
+1. Install and open [Ollama](https://ollama.com/download) using its official instructions. Confirm you have **Python 3.11 or newer** with `python3 --version` on macOS or `py -3 --version` on Windows. Installation from a completely unprepared computer is not yet a verified no-admin workflow. If your organization requires administrator approval or the OS blocks an executable, stop and use its supported process; do not disable protections.
+2. Download the [ZIP of `main`](https://github.com/aryawuyitong/local-llm-telemetry-dashboard/archive/refs/heads/main.zip) and extract it, or clone the repository. You may rename the extracted folder `local-ai-lab` and place it at `Desktop/i2ai/project/local-ai-lab`. If you already downloaded it, keep your folder. Open the folder containing `agent/` and `portal/` in VS Code, then choose **Terminal → New Terminal**.
+3. From that project-root terminal, enter `agent/`, create an isolated Python environment, and install its listed dependency:
 
 macOS:
 
 ```sh
+cd agent
 python3 -m venv .venv
 .venv/bin/python -m pip install -r requirements.txt
-.venv/bin/python -m telemetry_agent.helper
+AGENT_MODEL=qwen2.5:1.5b .venv/bin/python -m telemetry_agent.helper
 ```
 
-Windows Command Prompt:
+Windows PowerShell:
 
-```bat
+```powershell
+cd agent
 py -3 -m venv .venv
-.venv\Scripts\python.exe -m pip install -r requirements.txt
-.venv\Scripts\python.exe -m telemetry_agent.helper
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+$env:AGENT_MODEL = 'qwen2.5:1.5b'
+.\.venv\Scripts\python.exe -m telemetry_agent.helper
 ```
 
-3. Open the local URL printed by the helper, including its session fragment. The helper works **before a model exists**: inspect hardware and follow the manual deployment checklist. It does not install a runtime or download a model for you.
-4. Review the budget and model recommendation, start your installed runtime, and manually obtain one exact approved model tag. A small candidate is `qwen2.5:1.5b`; assistant chat defaults to `qwen2.5:3b` and needs that model installed. To use the same smaller model for chat, set `AGENT_MODEL=qwen2.5:1.5b` before starting the helper. Tags are mutable: check the publisher, applicable license, reported digest, actual download size, and available memory. No model weights are included here.
-5. Enter a TPS and RAM prediction, run the standard experiment, then download its anonymous JSON from the local Results view.
-6. Open the learning portal separately and import that JSON. Do not import raw logs or personal records.
+4. Keep the terminal open. The helper normally opens its local browser page automatically; if it does not, open the private `http://127.0.0.1:.../#t=...` link printed in the terminal. Do not share that link. The helper works **before a model exists** and does not install Ollama or download a model for you.
+5. In the helper, check hardware, choose a goal, and review the model recommendation and total disk budget. If `qwen2.5:1.5b` is suitable and you accept its license and size, run `ollama pull qwen2.5:1.5b` in a second terminal. If Ollama's command is not on your PATH, follow the helper's command for your installed app. If you choose a different model, restart the helper with `AGENT_MODEL` set to its exact tag for assistant chat. Tags are mutable: verify the publisher, applicable license, reported digest, actual download size, and available memory. No model weights are included here.
+6. Get one local response in the helper. Make a TPS and RAM prediction before using its **Predict & Run** view to run the benchmark. In its **Results** view, download the anonymous session JSON.
+7. Return to the [public website's Results view](https://aryawuyitong.github.io/local-llm-telemetry-dashboard/#results) and choose **Import JSON**. The file is read in your browser; it is not uploaded. Do not import raw logs or personal records.
 
-The `.command`/`.bat` launchers are optional conveniences after reviewing them. Use the explicit interpreter commands above when activation scripts are blocked; no execution-policy change is needed.
+The `.command`/`.bat` launchers are optional conveniences after reviewing them. Use the explicit interpreter commands above when activation scripts are blocked; no execution-policy change is needed. The public website and private helper stay separate; closing Ollama or the helper terminal ends local inference.
 
 ## Open the learning website
 

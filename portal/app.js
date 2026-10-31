@@ -118,12 +118,13 @@
   function setPlatform(platform) {
     const mac = platform === 'macos';
     document.querySelectorAll('[data-platform]').forEach(node => { const active = node.dataset.platform === platform; node.classList.toggle('active', active); node.setAttribute('aria-pressed', String(active)); });
-    $('platform-requirements').textContent = mac ? 'Ollama currently documents macOS 14 or newer; Apple Silicon supports CPU/GPU inference, while Intel Macs use CPU inference. Start with a working user-accessible Python and runtime.' : 'Ollama currently documents Windows 10 22H2 or newer. Its standard installer uses your account without administrator rights. Managed computers may restrict installing Python or a runtime; ask the team if they do.';
+    $('platform-requirements').textContent = mac ? 'On macOS, use Terminal or the VS Code terminal. Check Ollama’s current system requirements on its official page before installing.' : 'On Windows, use PowerShell or the VS Code terminal. Check Ollama’s current system requirements on its official page before installing.';
     $('runtime-instructions').textContent = mac ? 'For a user-account setup, place Ollama.app in a folder you own, such as ~/Applications, and open it there. Decline a request to move it to the system Applications folder or create a system-wide command link. The app bundle contains its own CLI at Ollama.app/Contents/Resources/ollama; the helper can use that path.' : 'Use the official Ollama installer and keep the default per-user location. Open Ollama, then open a new ordinary terminal so it sees the user PATH. Do not choose “Run as administrator.”';
     $('runtime-docs').href = mac ? 'https://docs.ollama.com/macos' : 'https://docs.ollama.com/windows';
-    $('shell-label').textContent = mac ? 'TERMINAL · INSIDE AGENT/' : 'POWERSHELL · INSIDE AGENT/';
-    $('bootstrap-command').textContent = mac ? 'python3 -m venv .venv\n.venv/bin/python -m pip install -r requirements.txt' : 'py -3 -m venv .venv\n.venv\\Scripts\\python.exe -m pip install -r requirements.txt';
-    $('helper-command').textContent = mac ? '.venv/bin/python -m telemetry_agent.helper' : '.venv\\Scripts\\python.exe -m telemetry_agent.helper';
+    $('python-check-command').textContent = mac ? 'python3 --version' : 'py -3 --version';
+    $('shell-label').textContent = mac ? 'MACOS TERMINAL · START IN PROJECT FOLDER' : 'WINDOWS POWERSHELL · START IN PROJECT FOLDER';
+    $('bootstrap-command').textContent = mac ? 'cd agent\npython3 -m venv .venv\n.venv/bin/python -m pip install -r requirements.txt' : 'cd agent\npy -3 -m venv .venv\n.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt';
+    $('helper-command').textContent = mac ? 'AGENT_MODEL=qwen2.5:1.5b .venv/bin/python -m telemetry_agent.helper' : '$env:AGENT_MODEL = "qwen2.5:1.5b"\n.\\.venv\\Scripts\\python.exe -m telemetry_agent.helper';
   }
   document.querySelectorAll('[data-platform]').forEach(node => node.addEventListener('click', () => setPlatform(node.dataset.platform)));
   document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async () => {

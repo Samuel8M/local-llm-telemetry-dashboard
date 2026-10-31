@@ -2,6 +2,8 @@
 
 Open the [published site](https://aryawuyitong.github.io/local-llm-telemetry-dashboard/). It serves only this static `portal/` directory; the local helper and model stay on each learner's computer.
 
+The Deploy view now gives the complete sequence for a real experiment: install Ollama and Python, download and open the repository folder, enter `agent/`, create the Python environment, start the private helper, download a suitable model, run the benchmark there, and import its JSON here. Learners who only want lessons, quizzes, or synthetic example results can stay on the public site without installing anything.
+
 A buildless, dependency-free teaching and interpretation interface. It has four views:
 
 - **Learn:** six concept explanations and an optional ten-item pre/post knowledge check.
