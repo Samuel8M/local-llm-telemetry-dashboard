@@ -40,6 +40,8 @@ To compare another model, open the helper's **Predict & Run** view and choose an
 
 The `.command`/`.bat` launchers are optional conveniences after reviewing them. Use the explicit interpreter commands above when activation scripts are blocked; no execution-policy change is needed. The public website and private helper stay separate; closing Ollama or the helper terminal ends local inference.
 
+If an old helper tab says **Failed to fetch** after you download a model, check the terminal where the helper was running. If it says **Stopped.**, restart the helper from `agent/` and open the new private link printed in that terminal; the old tab has an expired session token. Pulling a model in a second terminal does not restart the helper. Model files and completed benchmark JSON files remain on disk.
+
 ## Open the learning website
 
 Visit the public [Local AI Lab website](https://aryawuyitong.github.io/local-llm-telemetry-dashboard/) to use the lessons, quizzes, synthetic examples, and local JSON import. GitHub Pages publishes the static `portal/` directory when it changes on `main`. No Python or model is needed for these browser features.

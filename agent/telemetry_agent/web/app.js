@@ -22,9 +22,21 @@ const TOKEN = (() => {
 async function api(path, body) {
   const opts = { method: body === undefined ? 'GET' : 'POST', headers: { 'X-Lab-Token': TOKEN || '' } };
   if (body !== undefined) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-  const r = await fetch('/api/' + path, opts);
+  let r;
+  try { r = await fetch('/api/' + path, opts); }
+  catch (_) {
+    $('#connection-lost').hidden = false;
+    throw new Error('Cannot reach the local Lab Helper. If its terminal says "Stopped.", restart it from agent/ and open the new private link printed there. Your model download and saved results are still on this laptop.');
+  }
   const j = await r.json().catch(() => ({ error: `Unexpected response (${r.status})` }));
-  if (!r.ok) throw new Error(j.error || r.statusText);
+  if (!r.ok) {
+    if (r.status === 401) {
+      $('#connection-lost').hidden = false;
+      throw new Error('This tab belongs to an earlier Lab Helper session. Open the new private link printed when you restarted the helper.');
+    }
+    throw new Error(j.error || r.statusText);
+  }
+  $('#connection-lost').hidden = true;
   return j;
 }
 
