@@ -159,6 +159,23 @@
   }
   $('session-files').addEventListener('change', async event => { await importFiles(Array.from(event.target.files)); event.target.value = ''; });
   $('import-json').addEventListener('click', () => $('session-files').click());
+  // The local helper can hand one anonymous session to this tab after a user click.
+  // The result stays in memory here; this page makes no request to localhost.
+  window.addEventListener('message', event => {
+    if (event.source !== window.opener || !/^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/.test(event.origin)) return;
+    if (!event.data || event.data.type !== 'local-ai-lab:session' || event.data.version !== 1) return;
+    if (typeof event.data.sessionText !== 'string' || event.data.sessionText.length > D.MAX_FILE_BYTES) return;
+    let result = D.parseSession(event.data.sessionText);
+    if (result.session) result = D.addSession(state.sessions, result.session);
+    if (result.session) state.sessions.push(result.session);
+    $('import-messages').replaceChildren();
+    importMessage('Local helper', result);
+    updateFilters(); renderResults();
+    if (location.hash !== '#results') location.hash = 'results';
+    if (result.session) $('results-content').scrollIntoView({ block: 'start' });
+    event.source.postMessage({ type: result.session ? 'local-ai-lab:received' : 'local-ai-lab:rejected', version: 1 }, event.origin);
+  });
+  if (window.opener) window.opener.postMessage({ type: 'local-ai-lab:ready', version: 1 }, '*');
   async function loadExamples() {
     const generation = ++state.importGeneration;
     $('import-messages').replaceChildren();

@@ -5,6 +5,8 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const isMac = /Mac/.test(navigator.platform || navigator.userAgent);
+const PORTAL_ORIGIN = 'https://aryawuyitong.github.io';
+const PORTAL_RESULTS = PORTAL_ORIGIN + '/local-llm-telemetry-dashboard/#results';
 
 // The helper puts a one-time token in the URL (#t=...). Keep it for reloads, then hide it.
 const TOKEN = (() => {
@@ -310,7 +312,8 @@ async function loadResults() {
         <td class="num">${m.median_tps ?? '–'}</td><td class="num">${m.median_ttft_ms != null ? m.median_ttft_ms + ' ms' : '–'}</td>
         <td class="num">${m.peak_ram_mb != null ? (m.peak_ram_mb / 1024).toFixed(2) + ' GiB' : '–'}</td></tr>`).join('')}</tbody></table>
       <p class="small muted" style="margin-top:10px">${r.rows} records including partial/error cases. Each row is one session; summaries use available non-error values.</p></div>
-      <div class="actions"><button class="btn primary" data-download>Download latest anonymous session JSON</button></div>`;
+      <div class="actions"><button class="btn primary" data-open-charts>Open charts in public website</button><button class="btn" data-download>Download JSON instead</button></div>
+      <p class="small muted">Open charts transfers the latest anonymous session between these two browser tabs. No result is uploaded to a server. Keep this helper tab open until the charts appear.</p>`;
   } catch (e) { $('#results-body').innerHTML = errorHtml(e.message); }
 }
 
@@ -324,6 +327,36 @@ async function downloadJson() {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   } catch (e) { $('#results-body').insertAdjacentHTML('beforeend', errorHtml(e.message)); }
+}
+
+function openCharts() {
+  const popup = window.open(PORTAL_RESULTS, '_blank');
+  if (!popup) { $('#results-body').insertAdjacentHTML('beforeend', errorHtml('Allow the new tab, or use Download JSON instead.')); return; }
+  const button = document.querySelector('[data-open-charts]');
+  if (button) { button.disabled = true; button.textContent = 'Opening charts…'; }
+  let finished = false;
+  const finish = message => {
+    if (finished) return;
+    finished = true;
+    clearTimeout(timer);
+    window.removeEventListener('message', receive);
+    if (button) { button.disabled = false; button.textContent = 'Open charts in public website'; }
+    if (message) $('#results-body').insertAdjacentHTML('beforeend', errorHtml(message));
+  };
+  const receive = async event => {
+    if (event.source !== popup || event.origin !== PORTAL_ORIGIN || !event.data || event.data.version !== 1) return;
+    if (event.data.type === 'local-ai-lab:received') { finish(); return; }
+    if (event.data.type === 'local-ai-lab:rejected') { finish('The public website could not read this result. Use Download JSON instead.'); return; }
+    if (event.data.type !== 'local-ai-lab:ready') return;
+    try {
+      const response = await fetch('/api/results.json', { headers: { 'X-Lab-Token': TOKEN || '' } });
+      if (!response.ok) throw new Error('No valid benchmark result is available yet.');
+      const sessionText = await response.text();
+      popup.postMessage({ type: 'local-ai-lab:session', version: 1, sessionText }, PORTAL_ORIGIN);
+    } catch (error) { finish(error.message + ' Use Download JSON instead.'); }
+  };
+  window.addEventListener('message', receive);
+  const timer = setTimeout(() => finish('The charts did not open in time. Use Download JSON instead.'), 15000);
 }
 
 // ------------------------------------------------------------------ assistant
@@ -414,6 +447,7 @@ document.addEventListener('click', async e => {
   if ('recheck' in d) { await refreshStatus(); loadPlan(); return; }
   if ('try' in d) { tryModel(); return; }
   if ('download' in d) { downloadJson(); return; }
+  if ('openCharts' in d) { openCharts(); return; }
   if (d.ask) { ask(d.ask); return; }
   if (d.approve === 'check_hardware') {
     if (await runStep(hwStep, renderLaptop)) { state.hw = hwStep.result; renderLaptop(); unlock('stage-goal'); renderGoals(); }
