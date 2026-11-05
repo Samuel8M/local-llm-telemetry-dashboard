@@ -1,0 +1,105 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Local AI Lab</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+<header class="top">
+  <div class="brand"><span class="logo" aria-hidden="true"></span>Local AI Lab<span class="sub">Team 14</span></div>
+  <nav class="tabs" aria-label="Sections">
+    <button data-goto="learn" class="active">Learn</button>
+    <button data-goto="deploy">Deploy</button>
+    <button data-goto="predict">Predict &amp; Run</button>
+    <button data-goto="results">Results</button>
+  </nav>
+  <div id="pill" class="pill">Connecting…</div>
+</header>
+
+<div id="no-token" class="banner" hidden>
+  This page needs the Lab Helper. Double-click <strong>Start Lab Helper</strong> in the lab folder; it opens the lab for you.
+</div>
+<div id="connection-lost" class="banner" hidden role="alert">
+  <strong>Cannot reach this Lab Helper.</strong> If its terminal says <strong>Stopped.</strong>, start it again from the <code>agent/</code> folder and open the <strong>new private link</strong> printed in that terminal. An old helper tab cannot reconnect with its previous session token. Your downloaded models and saved benchmark results remain on this laptop.
+</div>
+
+<div class="banner" style="background:#fff4d6;color:#5a4300;border-color:#e8c66a"><strong>User-testing demo.</strong> This page simulates a Windows laptop (16 GiB RAM) with Ollama already running. Nothing is downloaded and no model runs here; answers come from the real helper code recorded for that laptop. <a href="https://github.com/Samuel8M/local-llm-telemetry-dashboard/commit/768052f96065c05c8517b374279c78d8f24db335" target="_blank" rel="noopener">See the code change</a>.</div>
+<div class="banner">Manual installation mode by default; optional Auto setup asks you to confirm first. Windows awaits physical-device validation. Stop if a step needs admin access or an OS security bypass.</div>
+<main class="layout">
+  <section class="content">
+
+    <div id="view-learn" class="view">
+      <p class="eyebrow">A guided manual lab</p>
+      <h1>Run an AI model on your own laptop</h1>
+      <p class="lead">Inspect your laptop, manually install a small local model, predict its resource use, then measure it. Static instructions work before the assistant has a local model to use.</p>
+      <div class="cards3">
+        <div class="card"><h3>Private</h3><p>The model runs on this laptop. Your questions never leave it.</p></div>
+        <div class="card"><h3>You're in control</h3><p>Installation and downloads stay manual. The helper runs only bounded checks and experiments that you choose.</p></div>
+        <div class="card"><h3>You learn how it works</h3><p>Each step explains the runtime, model files and commands you perform yourself.</p></div>
+      </div>
+      <h2>Five ideas you'll see</h2>
+      <dl class="terms">
+        <dt>Parameters (e.g. 3B)</dt><dd>The model's learned numbers. Size affects memory and computation; answer quality still needs evaluation.</dd>
+        <dt>Quantization (Q4)</dt><dd>Representing weights with fewer bits to reduce storage and memory. File size and quality depend on the exact artifact and method.</dd>
+        <dt>RAM</dt><dd>The model must fit in your free memory while it runs. If it doesn't fit, it crashes or crawls.</dd>
+        <dt>Tokens per second</dt><dd>Generated tokens divided by runtime-reported generation time. Tokens are text pieces whose size depends on language and tokenizer.</dd>
+        <dt>First-text latency</dt><dd>The wait until the first nonempty response text. A stream chunk can contain several tokens, so this is a proxy for exact TTFT.</dd>
+      </dl>
+      <div class="actions"><button class="btn primary big" data-goto="deploy">Start: check my laptop</button>
+        <button class="btn big" data-auto>Auto setup (one click, asks to confirm)</button></div>
+      <div id="auto-card" class="card auto" hidden>
+        <header class="auto-head"><h2>Auto setup</h2><span class="badge ask">Less transparent than manual</span></header>
+        <p class="small muted">Auto picks the best approved model for this laptop, asks your local Ollama to download it, verifies it, and opens a chat. It never installs programs, runs shell commands, asks for admin rights or deletes files. Install and open Ollama yourself first.</p>
+        <label class="field"><span class="lbl">Goal</span><select id="auto-goal"></select></label>
+        <div id="auto-body"></div>
+      </div>
+    </div>
+
+    <div id="view-deploy" class="view" hidden>
+      <h1>Deploy a model</h1>
+      <p class="note">Want it done for you? <button class="btn small" data-auto>Use Auto setup</button> It shows the plan and waits for your confirmation.</p>
+      <ol class="stages">
+        <li class="stage" id="stage-laptop"><h2><span class="n">1</span>Your laptop</h2><div id="laptop-body"></div></li>
+        <li class="stage locked" id="stage-goal"><h2><span class="n">2</span>What do you want to use it for?</h2><div id="goals" class="goals"></div></li>
+        <li class="stage locked" id="stage-model"><h2><span class="n">3</span>Your model</h2><div id="model-body"><p class="muted">Pick a goal first.</p></div></li>
+        <li class="stage locked" id="stage-steps"><h2><span class="n">4</span>Set it up</h2><div id="steps-body"><p class="muted">Pick a model first.</p></div></li>
+        <li class="stage locked" id="stage-try"><h2><span class="n">5</span>Try it</h2><div id="try-body"><p class="muted">Finish setup first.</p></div></li>
+      </ol>
+    </div>
+
+    <div id="view-predict" class="view" hidden>
+      <h1>Predict &amp; Run</h1>
+      <p class="lead">Guess how fast your model will be and how much memory it uses, then measure it. Comparing your guess with reality is how you build intuition.</p>
+      <div id="predict-body"></div>
+    </div>
+
+    <div id="view-results" class="view" hidden>
+      <h1>Results</h1>
+      <p class="lead">Click <strong>Open charts in public website</strong> to see your latest anonymous result in a new browser tab. The result passes directly between tabs and stays in your browser; it is not uploaded to a server. You can still download the JSON as a backup.</p>
+      <div id="results-body"></div>
+    </div>
+  </section>
+
+  <aside class="assistant" aria-label="Lab assistant">
+    <header class="a-head">
+      <div><strong>Lab assistant</strong><div class="small muted" id="a-model">Starting…</div></div>
+      <label class="switch" title="Safety stays on in the live lab; use the isolated evaluation harness for comparisons.">
+        <input type="checkbox" id="safety" checked disabled><span class="track"></span><span class="small">Safety on</span>
+      </label>
+    </header>
+    <div id="safety-off" class="note bad small" hidden>Live safety stays on. Comparisons use an isolated text-only evaluation harness.</div>
+    <div id="msgs" class="msgs" aria-live="polite"></div>
+    <div id="suggest" class="chips"></div>
+    <form id="a-form" class="a-form">
+      <textarea id="a-input" rows="2" placeholder="Ask a question or paste an error…"></textarea>
+      <button class="btn primary" id="a-send">Send</button>
+    </form>
+  </aside>
+</main>
+<script src="demo-data.js"></script>
+<script src="demo-api.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
