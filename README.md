@@ -38,6 +38,8 @@ $env:AGENT_MODEL = 'qwen2.5:1.5b'
 
 To compare another model, open the helper's **Predict & Run** view and choose any already installed approved model from its Model menu. Each exact model tag needs to be downloaded only once. For a new tag, use the **Copy command** button in Deploy, run that command in a second terminal, then return to the helper and click **I completed this step; check again**. The benchmark can select a different installed model without restarting the helper; `AGENT_MODEL` controls which model powers the tutoring chat.
 
+To compare two models in the public Results charts, benchmark each model locally under the same settings. Open **Import JSON** and select both saved session files from `agent/results/` in one selection. Chart rows identify the model. Compare the session conditions and data quality flags before interpreting the medians. This is a speed and resource comparison; benchmark responses are not recorded, so the charts cannot score answer quality. The Results page remains empty until you import measured data or explicitly choose labeled synthetic examples.
+
 The `.command`/`.bat` launchers are optional conveniences after reviewing them. Use the explicit interpreter commands above when activation scripts are blocked; no execution-policy change is needed. The public website and private helper stay separate; closing Ollama or the helper terminal ends local inference.
 
 If an old helper tab says **Failed to fetch** after you download a model, check the terminal where the helper was running. If it says **Stopped.**, restart the helper from `agent/` and open the new private link printed in that terminal; the old tab has an expired session token. Pulling a model in a second terminal does not restart the helper. Model files and completed benchmark JSON files remain on disk.
@@ -76,7 +78,7 @@ The baseline is **Ollama**, one model at a time, 2,048 context tokens, temperatu
 
 - **TTFT proxy:** client request start to first nonempty response text, not an independently verified token boundary.
 - **Decode TPS:** native output-token count divided by native decode duration. Stream chunks are never counted as tokens.
-- **CPU:** attributable runtime process-tree CPU time, normalized by logical core count; GPU utilization is not measured.
+- **CPU:** attributable runtime process-tree CPU time, normalized by logical core count; GPU utilization is not measured. The Results record shows whether Ollama reported GPU offload for the running model, where available. This is an acceleration status, not a GPU utilization percentage.
 - **RAM:** sampled process-tree peak RSS in MiB; shared pages can be double-counted and dedicated GPU memory is excluded.
 
 Missing attribution or runtime timing remains `null`. Failed and partial attempts are retained, and the portal recomputes statistics from available non-error run values. Background work, caching, memory pressure, thermal state, and acceleration limit cross-device comparisons.

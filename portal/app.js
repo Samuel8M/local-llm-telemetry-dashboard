@@ -8,6 +8,19 @@
   const STORAGE_KEY = 'local-ai-lab.learning.v1';
   const format = (n, digits = 1) => n === null || n === undefined || !Number.isFinite(n) ? '—' : n.toLocaleString('en-US', { maximumFractionDigits: digits });
   const unknown = (s) => s === null || s === undefined ? 'Not recorded' : String(s);
+  const glossary = {
+    ttft_ms: 'The wait from sending a request until the first visible response text. This is a proxy, not the exact first-token time.',
+    decode_tps: 'Tokens per second: how quickly the model generates text after prompt processing.',
+    cpu_percent_normalized: 'The observed runtime CPU use divided by logical core count. GPU work is not included.',
+    peak_rss_mib: 'Resident Set Size: sampled memory held by the runtime processes. Shared pages can be counted twice; this is not GPU memory.'
+  };
+  function termHelp(label, metric) {
+    const details = el('details', undefined, 'term-help');
+    const summary = el('summary');
+    summary.append(document.createTextNode(label + ' '), el('span', 'ⓘ', 'term-icon'));
+    details.append(summary, el('span', glossary[metric], 'term-definition'));
+    return details;
+  }
   let toastTimer;
   function toast(message) { $('toast').textContent = message; $('toast').hidden = false; clearTimeout(toastTimer); toastTimer = setTimeout(() => { $('toast').hidden = true; }, 4500); }
 
@@ -216,7 +229,9 @@
     $('metric-cards').replaceChildren();
     for (const [key, metric] of Object.entries(D.METRICS)) {
       const value = summary.metrics[key], card = el('article', undefined, 'metric-card');
-      card.append(el('div', metric.short + ' · MEDIAN', 'metric-label'));
+      const heading = el('div', undefined, 'metric-label');
+      heading.append(termHelp(metric.short, key), el('span', 'MEDIAN'));
+      card.append(heading);
       const number = el('div', format(value.median), 'metric-value'); number.append(el('span', metric.unit)); card.append(number);
       card.append(el('div', value.count ? format(value.min) + '–' + format(value.max) + ' ' + metric.unit + ' · n=' + value.count : 'No valid values', 'metric-range'));
       card.append(el('p', metric.note, 'metric-note')); $('metric-cards').append(card);
@@ -238,8 +253,8 @@
       }
       const details = el('details', undefined, 'chart-data'); details.append(el('summary', 'Read exact chart values')); const list = el('ul');
       series.forEach(({ session, stats }, i) => {
-        const y = top + i * 48, name = session.device.alias.length > 20 ? session.device.alias.slice(0, 18) + '…' : session.device.alias;
-        const label = svgNode('text', { x: 0, y: y + 2, 'font-size': 10, 'font-weight': 600 }, name); label.append(svgNode('title', {}, session.device.alias)); svg.append(label);
+        const y = top + i * 48, name = session.model.name.length > 20 ? session.model.name.slice(0, 18) + '…' : session.model.name;
+        const label = svgNode('text', { x: 0, y: y + 2, 'font-size': 10, 'font-weight': 600 }, name); label.append(svgNode('title', {}, session.model.name + ' · ' + session.device.alias)); svg.append(label);
         svg.append(svgNode('text', { x: 0, y: y + 16, 'font-size': 7.5 }, session.data_kind.toUpperCase() + ' · ' + session.created_at.slice(0, 10)));
         const color = session.data_kind === 'synthetic' ? '#a78432' : '#2f6b55';
         if (stats.count) {
@@ -268,7 +283,7 @@
       addMeta(dl, 'Session / created', session.session_id + ' · ' + session.created_at);
       addMeta(dl, 'Device', session.device.os + ' ' + session.device.os_version + ' · ' + session.device.arch);
       addMeta(dl, 'CPU / RAM', session.device.cpu_model + ' · ' + session.device.logical_cores + ' logical cores · ' + format(session.device.total_ram_gib, 2) + ' GiB');
-      addMeta(dl, 'GPU / acceleration', session.device.gpu + ' · ' + session.model.acceleration);
+      addMeta(dl, 'GPU / Ollama offload', session.device.gpu + ' · ' + (session.model.acceleration === 'gpu-assisted' ? 'GPU-assisted (runtime report)' : session.model.acceleration === 'cpu' ? 'CPU-only (runtime report)' : 'Not verified') + '; GPU utilization not measured');
       addMeta(dl, 'Runtime / quantization', session.runtime.name + ' ' + unknown(session.runtime.version) + ' · ' + unknown(session.model.quantization));
       addMeta(dl, 'Model digest', unknown(session.model.digest));
       addMeta(dl, 'Settings', 'temperature ' + session.config.temperature + ' · output cap ' + session.config.max_output_tokens + ' · context ' + unknown(session.config.context_tokens) + ' · repeats ' + session.config.repeats);
@@ -304,7 +319,7 @@
     $('synthetic-banner').hidden = !rows.some(r => r.session.data_kind === 'synthetic');
     if (!rows.length) {
       $('empty-results').querySelector('h2').textContent = state.sessions.length ? 'No runs match these filters.' : 'Your next discovery starts here.';
-      $('empty-results').querySelector('p').textContent = state.sessions.length ? 'Try another device, model, prompt, or data type.' : 'Import a helper export, or explore clearly labeled synthetic examples to learn how to read the charts.';
+      $('empty-results').querySelector('p').textContent = state.sessions.length ? 'Try another device, model, prompt, or data type.' : 'Run a model locally and import its measured session to see your charts. Synthetic examples are available only when you choose them above.';
       return;
     }
     const counts = $('run-counts'); counts.replaceChildren();
@@ -324,5 +339,10 @@
     const saved = safeLearningRecord(JSON.parse(localStorage.getItem(STORAGE_KEY)));
     if (saved) { state.prediction = saved.prediction; state.quiz = saved.quiz; state.consent = true; $('remember-learning').checked = true; }
   } catch (_) { /* Storage may be disabled. The entire lab remains usable in memory. */ }
+  const runHeaders = $('runs-table').closest('table').querySelectorAll('thead th');
+  [['ttft_ms', 2], ['decode_tps', 3], ['cpu_percent_normalized', 4], ['peak_rss_mib', 5]].forEach(([key, index]) => {
+    const label = runHeaders[index].textContent;
+    runHeaders[index].replaceChildren(termHelp(label, key));
+  });
   route(); setPlatform('macos'); renderHistory(); displayPrediction(); renderResults();
 })();

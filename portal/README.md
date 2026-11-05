@@ -25,6 +25,8 @@ On Windows, use `py -3` in place of `python3`. Open `http://127.0.0.1:8000`. Ope
 
 The public portal **does not call localhost**, inspect hardware, execute commands, run a model, or upload files. Launch the separate Python helper from `agent/` and use its printed local URL, including its session fragment. Export one JSON session per benchmark, then choose **Import JSON** here. The portal accepts the versioned contract in `docs/schema-v1.json`; it does not accept the older CSV format or the separate learning-record export.
 
+To compare models, measure each model in the local helper and select both saved JSON files from `agent/results/` in the same import. Chart rows identify model names. The comparison describes speed and resource use only: generated answers are not retained or scored. Results do not show invented data by default; synthetic examples appear only when the learner explicitly loads them.
+
 `examples/synthetic-macos.json` and `examples/synthetic-windows.json` contain invented data. The `synthetic-session.json` alias duplicates the macOS example and is intentionally rejected if imported alongside it. Examples are clearly identified as synthetic in banners, chart labels, session records, and tables. They must not be presented as real hardware tests.
 
 ## Data handling and interpretation
@@ -36,7 +38,7 @@ The public portal **does not call localhost**, inspect hardware, execute command
 - Failed runs contribute no metric values. Partial runs contribute available values per metric. `null` stays missing; numeric zero remains zero. Sample counts reflect those exclusions.
 - Metrics show medians of the selected run values, with minimum–maximum ranges. RAM summarizes per-run observed RSS peaks. Prediction RAM is converted using 1 GiB = 1024 MiB.
 - Multiple conditions produce descriptive pooled medians only. Use filters and session charts before drawing comparisons. Model digest, runtime, quantization, context, output cap, repeat count, and cache policy remain visible in the records.
-- CPU is normalized to logical cores and is not GPU utilization. RSS is process memory, not dedicated GPU memory or total system use; shared pages can be counted twice.
+- CPU is normalized to logical cores and is not GPU utilization. RSS is process memory, not dedicated GPU memory or total system use; shared pages can be counted twice. A session's GPU offload status comes from Ollama's runtime report, where available; it is not a GPU utilization percentage.
 - The TTFT proxy is client-observed request start to the first non-empty response text. Streaming chunks are not verified token boundaries.
 
 ## Optional learning record
