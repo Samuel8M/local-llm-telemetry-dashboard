@@ -1,0 +1,46 @@
+{
+  "_note": "A recipe is a reviewed list of the lab's registered steps. It adds no commands of its own, so it can do nothing a card can't. See docs/recipes.md. Set review.by and review.on only after a person has run it on a laptop.",
+  "recipes": [
+    {
+      "id": "try-local-ai",
+      "title": "Try a local AI model",
+      "for": "Anyone starting out",
+      "why": "The shortest path to a model answering on your own laptop.",
+      "review": {"by": null, "on": null},
+      "steps": [
+        {"action": "install_runtime"},
+        {"action": "start_runtime"},
+        {"action": "pull_model", "model": "qwen2.5:1.5b"},
+        {"action": "first_prompt", "model": "qwen2.5:1.5b"}
+      ]
+    },
+    {
+      "id": "private-study-notes",
+      "title": "Private study notes",
+      "for": "Students who want notes and a study helper that stay on their laptop",
+      "why": "Obsidian keeps every note as a plain text file on your laptop, and a local model can explain ideas without your words leaving it.",
+      "review": {"by": null, "on": null},
+      "steps": [
+        {"action": "install_app", "app": "obsidian"},
+        {"action": "install_runtime"},
+        {"action": "start_runtime"},
+        {"action": "pull_model", "model": "qwen2.5:1.5b"},
+        {"action": "first_prompt", "model": "qwen2.5:1.5b"}
+      ]
+    },
+    {
+      "id": "coding-starter",
+      "title": "Coding starter",
+      "for": "Students starting to program. Your course's own setup page comes first, because this doesn't replace it",
+      "why": "A code editor, plus a local model that can explain error messages. Check your course's AI rules before you use the model on graded work.",
+      "review": {"by": null, "on": null},
+      "steps": [
+        {"action": "install_app", "app": "vscode"},
+        {"action": "install_runtime"},
+        {"action": "start_runtime"},
+        {"action": "pull_model", "model": "qwen2.5:1.5b"},
+        {"action": "first_prompt", "model": "qwen2.5:1.5b"}
+      ]
+    }
+  ]
+}

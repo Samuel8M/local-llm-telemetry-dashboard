@@ -12,6 +12,7 @@ import re
 import time
 import urllib.error
 import urllib.request
+from pathlib import Path
 from typing import Iterator
 from http.client import HTTPException
 
@@ -20,6 +21,18 @@ from .config import local_urlopen, validate_local_base_url
 
 class LLMError(RuntimeError):
     pass
+
+
+def _runtime_message(error) -> str:
+    try:
+        body = json.loads(error.read(4096) or b"{}")
+        message = body.get("error") if isinstance(body, dict) else None
+        message = message.get("message") if isinstance(message, dict) else message
+    except (ValueError, OSError, AttributeError):
+        return ""
+    if not isinstance(message, str) or not message.strip():
+        return ""
+    return ": " + re.sub(r"\s+", " ", message.strip())[:160]
 
 
 class ChatClient:
@@ -34,8 +47,9 @@ class ChatClient:
         try:
             return local_urlopen(req, timeout=timeout or self.timeout)
         except urllib.error.HTTPError as e:
-            # Do not echo arbitrary runtime errors, which may contain prompts, paths or secrets.
-            raise LLMError(f"Local runtime returned HTTP {e.code}.") from e
+            # Only the runtime's own short error line is kept (it names the problem, e.g. a model that
+            # needs re-downloading); never the request, the body or anything that could hold a prompt.
+            raise LLMError(f"Local runtime returned HTTP {e.code}{_runtime_message(e)}.") from e
         except (urllib.error.URLError, TimeoutError, OSError, HTTPException) as e:
             raise LLMError("The local model server could not be reached or timed out.") from e
 
@@ -43,7 +57,7 @@ class ChatClient:
         return self._request(self.base_url + path, payload)
 
     def _native_url(self, path: str) -> str:
-        if path not in ("/api/chat", "/api/tags", "/api/ps", "/api/version", "/api/show"):
+        if path not in ("/api/chat", "/api/tags", "/api/ps", "/api/version", "/api/show", "/api/pull", "/api/delete", "/api/generate"):
             raise ValueError("Unsupported native API path")
         return self.base_url[:-3] + path
 
@@ -108,6 +122,79 @@ class ChatClient:
             raise LLMError("The local runtime returned an invalid stream.") from e
         except (OSError, TimeoutError, HTTPException) as e:
             raise LLMError("The local runtime stream was interrupted or timed out.") from e
+
+    def choose_tools(self, system: str, text: str, names: list[str]) -> list[str]:
+        """The model picks from a fixed list (Ollama structured output), which small models manage far better than free tool calling."""
+        schema = {"type": "object", "required": ["tools"], "properties": {"tools": {
+            "type": "array", "minItems": 1, "maxItems": 3, "items": {"type": "string", "enum": names}}}}
+        payload = {"model": self.model, "stream": False, "format": schema, "options": {"temperature": 0},
+                   "messages": [{"role": "system", "content": system}, {"role": "user", "content": text}]}
+        try:
+            with self._request(self._native_url("/api/chat"), payload) as resp:
+                picked = json.loads(json.loads(resp.read(1024 * 1024))["message"]["content"])["tools"]
+        except (KeyError, TypeError, ValueError, OSError, TimeoutError, HTTPException) as e:
+            raise LLMError("The local model did not return a usable tool choice.") from e
+        return [p for p in picked if p in names] if isinstance(picked, list) else []
+
+    def pull_stream(self, tag: str):
+        """Yields Ollama's progress objects while it downloads one model."""
+        payload = {"model": tag, "stream": True}
+        try:
+            with self._request(self._native_url("/api/pull"), payload, timeout=120) as resp:
+                for raw in resp:
+                    item = json.loads(raw or b"{}")
+                    if isinstance(item, dict):
+                        yield item
+        except (ValueError, OSError, TimeoutError, HTTPException) as e:
+            raise LLMError("The model download was interrupted. Approve it again to resume.") from e
+
+    def model_file(self, tag: str) -> str:
+        """Where the runtime itself says this model's weights are stored."""
+        try:
+            with self._request(self._native_url("/api/show"), {"model": tag}, timeout=10) as resp:
+                modelfile = json.loads(resp.read(8 * 1024 * 1024)).get("modelfile", "")
+            found = re.search(r"^FROM (.+)$", modelfile, re.M)
+        except (ValueError, AttributeError, TypeError, OSError, TimeoutError, HTTPException) as e:
+            raise LLMError("The local runtime did not say where this model is stored.") from e
+        if not found:
+            raise LLMError("The local runtime did not say where this model is stored.")
+        return found.group(1).strip()
+
+    def missing_files(self, tags) -> list[str]:
+        """Tags the runtime still lists whose weights file is gone from disk, so they can't load.
+
+        Ollama's list is its manifests, not its files; a model stays listed after its file vanishes.
+        """
+        missing = []
+        for tag in tags:
+            try:
+                path = Path(self.model_file(tag))
+            except LLMError as exc:
+                if "HTTP 404" in str(exc):  # listed, yet "not found" when asked about: its files are gone
+                    missing.append(tag)
+                continue  # any other failure: the runtime couldn't say, so trust its list rather than raise a false alarm
+            if not path.is_file() or path.stat().st_size == 0:
+                missing.append(tag)
+        return missing
+
+    def loaded_models(self) -> list[str]:
+        """Models Ollama is holding in memory right now."""
+        return [row.get("name") for row in self.native_get("/api/ps").get("models", []) if row.get("name")]
+
+    def unload(self, tag: str) -> None:
+        """Ask Ollama to free this model's memory. The file stays on disk."""
+        with self._request(self._native_url("/api/generate"), {"model": tag, "keep_alive": 0, "stream": False}) as resp:
+            resp.read()
+
+    def delete_model(self, tag: str) -> None:
+        req = urllib.request.Request(self._native_url("/api/delete"), method="DELETE",
+                                     data=json.dumps({"model": tag}).encode(), headers={"Content-Type": "application/json"})
+        try:
+            local_urlopen(req, timeout=30).close()
+        except urllib.error.HTTPError as e:
+            raise LLMError(f"Local runtime returned HTTP {e.code}.") from e
+        except (urllib.error.URLError, TimeoutError, OSError, HTTPException) as e:
+            raise LLMError("The local model server could not be reached or timed out.") from e
 
     def benchmark_stream(self, messages: list[dict], runtime: str = "ollama", max_tokens: int = 128,
                          temperature: float = 0.0, context_tokens: int = 2048):

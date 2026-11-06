@@ -101,6 +101,9 @@ class RouteRules(unittest.TestCase):
             "What's next? Did I install it right?": ("check_install", {}),
             "How much RAM does my laptop have?": ("check_hardware", {}),
             "What is quantization?": None,
+            "Can't I just use ChatGPT instead?": None,
+            "I couldn't decide which model to use": ("recommend_model", {}),
+            "It says it cannot connect to the local runtime": ("read_logs", None),
         }
         for text, want in cases.items():
             with self.subTest(text=text):

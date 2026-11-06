@@ -11,7 +11,10 @@ from __future__ import annotations
 import re
 
 ERROR_HINT = re.compile(
-    r"\berror\b|\bfailed\b|traceback|exception|not found|denied|refused|cannot|can't|couldn't|"
+    # "can't" and "cannot" alone are how learners ask questions ("Can't I just use ChatGPT?"), so they only
+    # count next to a technical word; the catalog check in route() still catches errors without these words.
+    r"\berror\b|\bfailed\b|traceback|exception|not found|permission denied|access denied|refused|"
+    r"(?:cannot|can't|couldn't) (?:connect|open|find|load|start|access|be loaded|be found)|"
     r"not recognized|no such file|errno|\b[45]\d\d client|already in use|out of memory|no space left", re.I)
 BENCH_HINT = re.compile(r"benchmark|test (it|how fast|the speed)|how fast|tokens per second|\btps\b|tok/s|speed", re.I)
 REC_HINT = re.compile(r"\b(which|what) (model|llm)|recommend|what can my (laptop|computer|machine)|"

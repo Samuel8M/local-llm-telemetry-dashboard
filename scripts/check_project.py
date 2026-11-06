@@ -17,6 +17,8 @@ class Assets(HTMLParser):
         attrs = dict(attrs)
         value = attrs.get('src') if tag == 'script' else attrs.get('href') if tag == 'link' else None
         if value:
+            if value.startswith('data:'):
+                return
             if re.match(r'(?i)(?:https?:)?//', value):
                 raise ValueError('Portal must not depend on external assets: ' + value)
             if not (ROOT / 'portal' / value).is_file():
@@ -33,6 +35,10 @@ def main():
             raise ValueError('Example baseline must contain nine attempted runs.')
         count += 1
     Assets().feed((ROOT / 'portal/index.html').read_text(encoding="utf-8"))
+    sys.path.insert(0, str(ROOT / 'scripts'))
+    import sync_portal_data
+    if sync_portal_data.main(check=True):
+        raise ValueError('portal/lab-data.js is out of date.')
     for suite, expected in [('diagnosis', 20), ('redteam', 15), ('benign', 5)]:
         data = json.loads((ROOT / f'evaluation/cases/{suite}.json').read_text(encoding="utf-8"))
         cases = data['cases']
@@ -41,8 +47,8 @@ def main():
         if any(not isinstance(c['prompt'], str) or not c['prompt'].strip() for c in cases):
             raise ValueError('Empty prompt in ' + suite)
     schemas = Toolbox(Settings()).schemas()
-    if {s['function']['name'] for s in schemas} != {'check_hardware','check_install','recommend_model','read_logs','run_benchmark'}:
-        raise ValueError('Five-tool contract changed.')
+    if {s['function']['name'] for s in schemas} != {'check_hardware','check_install','recommend_model','read_logs','run_benchmark','propose_step'}:
+        raise ValueError('Tool contract changed: five documented tools plus propose_step, which only proposes an approval card.')
     for base in ['agent/telemetry_agent', 'evaluation', 'scripts']:
         for path in (ROOT / base).rglob('*.py'):
             ast.parse(path.read_text(encoding='utf-8'), filename=str(path))
@@ -54,6 +60,8 @@ def main():
                 continue
             if not (path.parent / target.split('#')[0]).exists():
                 raise ValueError(f'Broken document link: {filename}: {target}')
+    from telemetry_agent.recipes import load_recipes
+    load_recipes()  # fails and names the problem if a recipe uses an unknown step, model or app
     print(f'Project contracts passed: {count} synthetic fixtures,40 evaluation cases,5 custom tools,static assets,Python syntax,documentation links.')
 
 if __name__ == '__main__':

@@ -17,7 +17,7 @@ from dataclasses import dataclass, field
 
 from . import guardrails
 from .config import SKILL_DIR, Settings
-from .llm import ChatClient
+from .llm import ChatClient, LLMError
 from .router import route
 from .system import hardware_info
 from .tools import Toolbox
@@ -25,6 +25,18 @@ from .tools import Toolbox
 MAX_CALLS_PER_REPLY = 5
 MAX_TOOL_ARGUMENT_CHARS = 20000
 MAX_TOOL_CONTENT_CHARS = 32000
+PICKER_TOOLS = {
+    "check_hardware": "the learner asks about their laptop's specs, RAM or disk",
+    "check_install": "the learner asks if setup is finished, what's next, or whether something is working",
+    "recommend_model": "the learner asks which model to use, or whether a model will fit their laptop",
+    "read_logs": "the learner describes or pastes an error, or something refusing to open or run",
+    "run_benchmark": "the learner wants a speed or memory measurement of a model",
+    "propose_step": "the learner asks the lab to download, start, remove, say hello to or set up a specific model for them",
+    "none": "a general question about concepts, or anything else",
+}
+PICKER_PROMPT = ("Choose which tools a local-AI lab assistant should run for the learner's message. Tools:\n"
+                 + "\n".join(f"- {k}: {v}" for k, v in PICKER_TOOLS.items())
+                 + "\nAnswer as JSON. Use several tools only if the message asks for several things.")
 
 
 @dataclass
@@ -33,6 +45,15 @@ class AgentReply:
     trace: list[dict] = field(default_factory=list)          # every tool call: name, args, result
     raw_violations: list[guardrails.Violation] = field(default_factory=list)  # before the guardrail fixed them
     guardrail_intervened: bool = False
+
+
+# Everything about this laptop is answered by code before the model is asked (see answers.py), so in the
+# Lab Helper the model gets one job: explain an idea. With the full playbook and tools, small models wander into setup steps.
+OPEN_PROMPT = ("You explain ideas about computers and AI to a beginner.\n"
+               "Answer only the question asked, in at most five plain sentences.\n"
+               "You cannot see this laptop and you cannot run anything. If the question needs a fact about this laptop, say you can't check that here and suggest the My lab page.\n"
+               "Never state a version, file path, size or speed. Never give a command or ask the learner to run one.\n"
+               "If you aren't sure, say so.")
 
 
 class LabAgent:
@@ -65,11 +86,18 @@ class LabAgent:
             user_text = cleaned
         self.messages.append({"role": "user", "content": user_text})
         trace: list[dict] = []
+        if self.settings.open_answers:
+            recent = [m for m in self.messages[1:] if m["role"] in {"user", "assistant"} and m.get("content")][-7:]
+            return self._finish(_message_text(self.llm.chat([{"role": "system", "content": OPEN_PROMPT}, *recent])), trace)
         if self.settings.router and not secret_found:  # a pasted secret is handled first, not routed
             known =lambda t: bool(self.tools.read_logs(t)["matches"])  # noqa: E731
             routed = [{"id": _id(), "name": n, "args": a} for n, a in route(user_text, self.model_names, known)]
             if routed:
                 self._run_calls(routed, trace, routed_by="router")
+        if self.settings.tool_picker and not secret_found and not trace:
+            picked = self._picked_calls(user_text)
+            if picked:
+                self._run_calls(picked, trace, routed_by="llm")
 
         for _ in range(self.settings.max_steps):
             msg = self.llm.chat(self.messages, tools=self.tools.schemas())
@@ -82,6 +110,35 @@ class LabAgent:
         self.messages.append({"role": "user", "content": "Stop calling tools. Summarize what you found and give the learner the single next step."})
         msg = self.llm.chat(self.messages)
         return self._finish(_message_text(msg), trace)
+
+    def _picked_calls(self, text: str) -> list[dict]:
+        """Tools the LLM chose from the fixed list; a failed choice just leaves the normal loop to answer."""
+        choose = getattr(self.llm, "choose_tools", None)
+        if choose is None or self.settings.runtime != "ollama":
+            return []
+        try:
+            names = choose(PICKER_PROMPT, text, list(PICKER_TOOLS))
+        except LLMError:
+            return []
+        calls = []
+        for name in dict.fromkeys(names):
+            if name == "read_logs" and self.tools.read_logs(text)["matches"]:
+                calls.append({"id": _id(), "name": name, "args": {"log_text": text}})
+            elif name == "run_benchmark":
+                model = next((m for m in self.model_names if m.lower() in text.lower()), None)
+                if model:
+                    calls.append({"id": _id(), "name": name, "args": {"model": model}})
+            elif name == "propose_step":
+                model = next((m for m in self.model_names if m.lower() in text.lower()), None)
+                app = _app_for(text)
+                step = _step_for(text)
+                if app and step in {"pull_model", "remove_model"}:
+                    calls.append({"id": _id(), "name": name, "args": {"step": "remove_app" if step == "remove_model" else "install_app", "app": app}})
+                elif model and step:
+                    calls.append({"id": _id(), "name": name, "args": {"step": step, "model": model}})
+            elif name in {"check_hardware", "check_install", "recommend_model"}:
+                calls.append({"id": _id(), "name": name, "args": {}})
+        return calls
 
     def _run_calls(self, calls: list[dict], trace: list[dict], routed_by: str, content: str = ""):
         content = content[:MAX_TOOL_CONTENT_CHARS]
@@ -122,6 +179,22 @@ class LabAgent:
             reply.text = guardrails.scrub(rewrite, still) if still else rewrite
         self.messages.append({"role": "assistant", "content": reply.text})
         return reply
+
+
+_STEP_WORDS = [("remove_model", r"\b(remove|delete|undo|uninstall|get rid)\b"), ("benchmark", r"\b(measure|benchmark|speed|how fast)\b"),
+               ("first_prompt", r"\b(hello|say hi|try it|talk to|test it)\b"), ("pull_model", r"\b(download|pull|install|set ?up|get)\b"),
+               ("start_runtime", r"\bstart\b")]
+
+
+def _step_for(text: str) -> str | None:
+    return next((step for step, pattern in _STEP_WORDS if re.search(pattern, text, re.I)), None)
+
+
+_APP_WORDS = [("vscode", r"\b(vs ?code|visual studio code)\b"), ("obsidian", r"\bobsidian\b")]
+
+
+def _app_for(text: str) -> str | None:
+    return next((app for app, pattern in _APP_WORDS if re.search(pattern, text, re.I)), None)
 
 
 _INLINE = re.compile(r"<tool_call>\s*(.*?)\s*</tool_call>|```(?:json)?\s*(.*?)\s*```", re.S)

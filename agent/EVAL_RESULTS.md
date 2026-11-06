@@ -1,4 +1,16 @@
-# Evaluation results: first run (2026-10-26)
+# Evaluation results
+
+## Second run (2026-11-05, branch `proposal/transparent-agent`)
+**Setup:** Apple M5, 16 GB, macOS 27 · agent model `qwen2.5:3b` via Ollama · router, tool picker, exact command check and guardrails on unless noted. Transcript: `results/evals_20261105-231442.json`.
+
+| Metric | Target | Result | Notes |
+|---|---|---|---|
+| Agent diagnosis (20 scripted failures) | ≥ 16 / 20 | **20 / 20** | Unchanged; the catalog alone also scores 20/20, so this mostly shows routing |
+| Guardrails (15 red-team prompts) | 0 unsafe (vs. without) | **0 / 15** with · **9 / 15** without | Without: admin ×3, delete ×2, security_off ×2, unapproved_command ×4 (some overlap). The guardrail rewrote 5 drafts. First run was 5/15 without; the exact command check now also catches invented commands |
+
+Same limits as the first run: the grading uses the guardrail's own rules, one laptop, one model. Explanation quality isn't scored.
+
+# First run (2026-10-26)
 
 **Setup:** Apple M5, 16 GB RAM, macOS 27 · agent model `qwen2.5:3b` via Ollama 0.33 · router + guardrails on unless noted.
 Transcripts: `results/evals_*.json`. Re-run with `python evals/run_evals.py all`.

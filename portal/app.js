@@ -26,10 +26,10 @@
 
   function route() {
     const candidate = location.hash.slice(1);
-    const view = ['learn', 'deploy', 'predict', 'results'].includes(candidate) ? candidate : 'learn';
+    const view = ['learn', 'deploy', 'models', 'use', 'predict', 'results', 'apps', 'mylab'].includes(candidate) ? candidate : 'deploy';
     document.querySelectorAll('.view').forEach(node => { node.hidden = node.id !== 'view-' + view; });
     document.querySelectorAll('[data-view]').forEach(node => { if (node.dataset.view === view) node.setAttribute('aria-current', 'page'); else node.removeAttribute('aria-current'); });
-    document.title = ['Local AI Lab', { learn: 'Learn', deploy: 'Deploy', predict: 'Predict & Run', results: 'Results' }[view]].join(' · ');
+    document.title = ['Local AI Lab', { learn: 'Learn', deploy: document.documentElement.dataset.mode === 'lab' ? 'Set up' : 'Start', models: 'Models', use: 'Use it', predict: 'Predict & Run', results: 'Results', apps: 'Apps', mylab: 'My lab' }[view]].join(' · ');
   }
   window.addEventListener('hashchange', () => { route(); $('main').focus({ preventScroll: true }); window.scrollTo(0, 0); });
 
@@ -59,16 +59,16 @@
     if (state.quiz.pre && state.quiz.post) box.append(el('p', 'Change: ' + (state.quiz.post.score - state.quiz.pre.score >= 0 ? '+' : '') + (state.quiz.post.score - state.quiz.pre.score) + ' points. Repeated questions can create a practice effect.'));
   }
   const QUIZ = [
-    { q: 'What is the main job of a model runtime?', choices: ['Store your browser history', 'Load model weights and execute inference', 'Train a new model every time you ask', 'Upload all prompts to a cloud service'], correct: 1, why: 'The runtime executes the model. The model weights and the program that runs them are separate components.' },
-    { q: 'What does “1.5B” in a model name usually describe?', choices: ['About 1.5 billion learned parameters', 'A guaranteed 1.5 GiB memory requirement', '1.5 billion requests per second', 'The number of users it can support'], correct: 0, why: 'Parameter count describes learned numbers. Quantization, context, runtime, and hardware also affect memory needs.' },
-    { q: 'What is a typical benefit and trade-off of lower-bit quantization?', choices: ['Higher disk use with no quality change', 'Guaranteed better answers', 'Lower weight storage, with a possible quality cost', 'Elimination of all working memory'], correct: 2, why: 'Fewer bits per weight can reduce storage and memory. Answer quality and speed depend on the specific model, runtime, and hardware.' },
-    { q: 'The client-observed TTFT proxy in this lab measures…', choices: ['Total time to finish the answer', 'Time to download model weights', 'How many words fit in memory', 'Time from request start to the first non-empty response text'], correct: 3, why: 'This first-response-text latency includes prompt processing. It approximates the initial wait but does not establish a true token boundary, and is distinct from output generation speed.' },
-    { q: 'Which calculation best represents generation TPS in this lab?', choices: ['Prompt words divided by RAM', 'Output token count divided by runtime decode duration', 'Total wall time divided by output tokens', 'CPU utilization multiplied by model size'], correct: 1, why: 'Decode TPS uses the runtime output token count and decode duration. It excludes the input prompt-processing phase.' },
-    { q: 'A model generates quickly but CPU use is low. Which explanation is plausible?', choices: ['The measurement proves no computation happened', 'The model must be using the internet', 'A GPU may be doing much of the inference', 'The answers must be correct'], correct: 2, why: 'CPU utilization is not GPU utilization. Accelerator offload is a possible explanation, but should be checked against the recorded environment.' },
-    { q: 'What does peak process RSS tell you?', choices: ['Observed resident memory of the attributed processes', 'Exact dedicated GPU memory', 'The model’s total training dataset size', 'A guaranteed total system-memory requirement'], correct: 0, why: 'RSS is a sampled process-memory measure. It omits dedicated GPU memory and can double-count shared pages when summed across processes.' },
-    { q: 'Why exclude the warm-up request from steady-state comparisons?', choices: ['It always has the best answer', 'It removes the need to report errors', 'It makes every laptop identical', 'Initial loading can add time that is different from warmed inference'], correct: 3, why: 'Warm-up helps separate loading from steady-state behavior. Caching, heat, and background workloads can still affect later runs.' },
-    { q: 'Which comparison is most defensible?', choices: ['Any two TPS numbers from the internet', 'Repeated runs with matching prompt, model digest, and generation settings', 'The fastest run on one device versus the slowest on another', 'A missing metric treated as zero'], correct: 1, why: 'Control the conditions, report repeats and range, and retain failed or unavailable measurements. A speed comparison does not establish answer quality.' },
-    { q: 'An installation error suggests disabling a security feature or using administrator commands. What should you do?', choices: ['Paste credentials into the assistant', 'Disable the protection and continue', 'Stop and seek a user-account alternative or team guidance', 'Delete unknown system files'], correct: 2, why: 'Keep the lab within a normal user account and preserve security protections. Ask for help when your device policy prevents installation.' }
+    { q: 'You type a question into a model running on your laptop. Where do your words go?', choices: ['To the company that made the model, which sends an answer back', 'Nowhere else. They stay on your laptop', 'To Ollama’s website, which does the thinking', 'To the cloud, but only while you have internet'], correct: 1, why: 'A local model runs on your own laptop, so your words never leave it. A cloud service like ChatGPT sends them to someone else’s computers and back.' },
+    { q: 'What is the difference between Ollama and the model file you download?', choices: ['Ollama is the engine that runs models; the model is a file of learned numbers', 'They are the same thing with two names', 'Ollama is the model; the file is a backup of its settings', 'The model file is the program; Ollama is just the folder it sits in'], correct: 0, why: 'Ollama is the engine. The model is a file of learned numbers. A downloaded model does nothing on its own until an engine loads it.' },
+    { q: 'Your laptop has 8 GB of memory. Which of these should you start with?', choices: ['The biggest model, because bigger is always better', 'A small model, about 1 to 2 billion parameters', 'Any model. Memory only changes the download time', 'None. No model runs on 8 GB'], correct: 1, why: 'Start small. A model needs free memory to load, and a bigger model needs more. On 8 GB, a 1–2B model fits with room left for your other apps.' },
+    { q: 'What does the “Download a model” step add to your laptop, and how do you undo it?', choices: ['One model file in Ollama’s folder. Click Undo, or run ollama rm', 'A new app in Applications. Drag it to the Trash', 'Changes to system settings. Reinstall your system to undo them', 'Files in many folders. It cannot be undone'], correct: 0, why: 'The download adds one model file inside Ollama’s models folder. Undo in the lab, or ollama rm with the model’s name, removes it again.' },
+    { q: 'A setup step asks for your admin password, or to turn off a security setting. What do you do?', choices: ['Type it in. Setup usually needs it', 'Turn security off for a minute, then turn it back on', 'Stop. This lab never needs it. Ask the team', 'Skip that step and carry on with the next one'], correct: 2, why: 'Nothing in this lab needs your password or a security change. If a step asks for one, something is off: stop and ask the team.' },
+    { q: 'A local model gives a confident answer that turns out to be wrong. Why can that happen?', choices: ['It predicts the next likely token. It does not look facts up', 'It lost internet, so it could not check', 'The download was damaged on the way', 'Small models give wrong answers on purpose'], correct: 0, why: 'The model predicts which token likely comes next, again and again. That is prediction, not looking things up, so a reply can sound sure and still be wrong.' },
+    { q: 'The lab reports “18 tokens per second”. In plain words, what does that tell you?', choices: ['How fast the reply appears. Tokens are pieces of words', 'How many questions you can ask each second', 'How much memory the model is using', 'How accurate the answers are'], correct: 0, why: 'Tokens are pieces of words. Tokens per second is how quickly the reply appears on your screen. It says nothing about whether the answer is right.' },
+    { q: 'Before measuring, the lab asks you to guess the speed and memory. Why guess first?', choices: ['Your guess is used to set the model up', 'A guess gives the measurement something to teach you', 'The lab needs a number to start its timer', 'A good guess earns a higher quiz score'], correct: 1, why: 'If you guess first, the real number can surprise you, and a surprise is where learning happens. Without a guess, it is just a number.' },
+    { q: 'The model runs, but each reply crawls out very slowly. What is the most likely reason?', choices: ['Your internet connection is slow', 'Too little free memory for its size, often because other apps are open', 'The model file did not download properly', 'The model needs a license before it runs at full speed'], correct: 1, why: 'A local model does not use the internet to reply. Slow replies usually mean the model is too big for the free memory, often because other apps are open.' },
+    { q: 'You click “Show on my laptop” for a downloaded model. What opens, and what should you not do?', choices: ['Ollama’s models folder, with a file named by a code. Don’t move or rename it', 'A text file of the model’s past answers. Don’t share it', 'A file named after the model. Rename it to anything you like', 'The Ollama app’s settings. Don’t change them'], correct: 0, why: 'Models live in Ollama’s models folder, in files named by a code rather than the model’s name. If you move or rename one, Ollama can’t find it.' }
   ];
   function openQuiz(phase) {
     state.phase = phase;
@@ -99,11 +99,13 @@
     const score = answers.filter((a, i) => a === QUIZ[i].correct).length;
     state.quiz[state.phase] = { score, answers, completed_at: new Date().toISOString() };
     form.querySelectorAll('.quiz-answer').forEach(n => n.remove());
-    form.querySelectorAll('fieldset').forEach((field, i) => {
+    // The pre-lab check shows only the score, so the post-lab check asks the same questions fresh.
+    const showFeedback = state.phase === 'post';
+    if (showFeedback) form.querySelectorAll('fieldset').forEach((field, i) => {
       const right = answers[i] === QUIZ[i].correct;
       field.append(el('p', (right ? 'Correct. ' : 'Review: ' + QUIZ[i].choices[QUIZ[i].correct] + '. ') + QUIZ[i].why, 'quiz-answer ' + (right ? 'correct' : 'incorrect')));
     });
-    const result = el('div', undefined, 'quiz-result'); result.append(el('h3', score + ' / 10'), el('p', 'Review the explanations above. ' + (state.consent ? 'Your latest result is saved in this browser.' : 'Your result stays in this tab unless you choose to save or export it.')));
+    const result = el('div', undefined, 'quiz-result'); result.append(el('h3', score + ' / 10'), el('p', (showFeedback ? 'Review the explanations above. ' : 'You’ll see the explanations after the post-lab quiz. ') + (state.consent ? 'Your latest result is saved in this browser.' : 'Your result stays in this tab unless you choose to save or export it.')));
     if (state.quiz.pre && state.quiz.post) result.append(el('p', 'Pre-lab ' + state.quiz.pre.score + ' → post-lab ' + state.quiz.post.score + '. This repeated-question check can show practice effects; it is not proof of a causal learning gain.'));
     $('quiz-feedback').replaceChildren(result); persistLearning(); result.scrollIntoView({ block: 'center' });
   });
@@ -128,20 +130,22 @@
     $('prediction-status').textContent = 'Prediction recorded ' + (state.consent ? 'and saved in this browser.' : 'in this tab.');
   });
 
+  // The manual 7-step walkthrough now lives in the README, so these elements are usually absent. Each write is guarded.
+  const setText = (id, text) => { const node = $(id); if (node) node.textContent = text; };
   function setPlatform(platform) {
     const mac = platform === 'macos';
     document.querySelectorAll('[data-platform]').forEach(node => { const active = node.dataset.platform === platform; node.classList.toggle('active', active); node.setAttribute('aria-pressed', String(active)); });
-    $('platform-requirements').textContent = mac ? 'On macOS, use Terminal or the VS Code terminal. Check Ollama’s current system requirements on its official page before installing.' : 'On Windows, use PowerShell or the VS Code terminal. Check Ollama’s current system requirements on its official page before installing.';
-    $('runtime-instructions').textContent = mac ? 'For a user-account setup, place Ollama.app in a folder you own, such as ~/Applications, and open it there. Decline a request to move it to the system Applications folder or create a system-wide command link. The app bundle contains its own CLI at Ollama.app/Contents/Resources/ollama; the helper can use that path.' : 'Use the official Ollama installer and keep the default per-user location. Open Ollama, then open a new ordinary terminal so it sees the user PATH. Do not choose “Run as administrator.”';
-    $('runtime-docs').href = mac ? 'https://docs.ollama.com/macos' : 'https://docs.ollama.com/windows';
-    $('python-check-command').textContent = mac ? 'python3 --version' : 'py -3 --version';
-    $('shell-label').textContent = mac ? 'MACOS TERMINAL · START IN PROJECT FOLDER' : 'WINDOWS POWERSHELL · START IN PROJECT FOLDER';
-    $('bootstrap-command').textContent = mac ? 'cd agent\npython3 -m venv .venv\n.venv/bin/python -m pip install -r requirements.txt' : 'cd agent\npy -3 -m venv .venv\n.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt';
-    $('helper-command').textContent = mac ? 'AGENT_MODEL=qwen2.5:1.5b .venv/bin/python -m telemetry_agent.helper' : '$env:AGENT_MODEL = "qwen2.5:1.5b"\n.\\.venv\\Scripts\\python.exe -m telemetry_agent.helper';
+    setText('platform-requirements', mac ? 'On macOS, use Terminal or the VS Code terminal. Check Ollama’s current system requirements on its official page before installing.' : 'On Windows, use PowerShell or the VS Code terminal. Check Ollama’s current system requirements on its official page before installing.');
+    setText('runtime-instructions', mac ? 'For a user-account setup, place Ollama.app in a folder you own, such as ~/Applications, and open it there. Decline a request to move it to the system Applications folder or create a system-wide command link. The app bundle contains its own CLI at Ollama.app/Contents/Resources/ollama; the helper can use that path.' : 'Use the official Ollama installer and keep the default per-user location. Open Ollama, then open a new ordinary terminal so it sees the user PATH. Do not choose “Run as administrator.”');
+    const docs = $('runtime-docs'); if (docs) docs.href = mac ? 'https://docs.ollama.com/macos' : 'https://docs.ollama.com/windows';
+    setText('python-check-command', mac ? 'python3 --version' : 'py -3 --version');
+    setText('shell-label', mac ? 'MACOS TERMINAL · START IN PROJECT FOLDER' : 'WINDOWS POWERSHELL · START IN PROJECT FOLDER');
+    setText('bootstrap-command', mac ? 'cd agent\npython3 -m venv .venv\n.venv/bin/python -m pip install -r requirements.txt' : 'cd agent\npy -3 -m venv .venv\n.\\.venv\\Scripts\\python.exe -m pip install -r requirements.txt');
+    setText('helper-command', mac ? 'AGENT_MODEL=qwen2.5:1.5b .venv/bin/python -m telemetry_agent.helper' : '$env:AGENT_MODEL = "qwen2.5:1.5b"\n.\\.venv\\Scripts\\python.exe -m telemetry_agent.helper');
   }
   document.querySelectorAll('[data-platform]').forEach(node => node.addEventListener('click', () => setPlatform(node.dataset.platform)));
   document.querySelectorAll('[data-copy]').forEach(button => button.addEventListener('click', async () => {
-    try { await navigator.clipboard.writeText($(button.dataset.copy).textContent); toast('Commands copied. Read them before running them in your terminal.'); }
+    try { const source = $(button.dataset.copy); if (!source) throw new Error('missing'); await navigator.clipboard.writeText(source.textContent); toast('Commands copied. Read them before running them in your terminal.'); }
     catch (_) { toast('Copy is unavailable here. Select and copy the visible commands manually.'); }
   }));
 
@@ -172,27 +176,23 @@
   }
   $('session-files').addEventListener('change', async event => { await importFiles(Array.from(event.target.files)); event.target.value = ''; });
   $('import-json').addEventListener('click', () => $('session-files').click());
-  // The local helper can hand one anonymous session to this tab after a user click.
-  // The result stays in memory here; this page makes no request to localhost.
-  window.addEventListener('message', event => {
-    if (event.source !== window.opener || !/^http:\/\/(?:127\.0\.0\.1|localhost):\d+$/.test(event.origin)) return;
-    if (!event.data || event.data.type !== 'local-ai-lab:session' || event.data.version !== 1) return;
-    if (typeof event.data.sessionText !== 'string' || event.data.sessionText.length > D.MAX_FILE_BYTES) return;
-    let result = D.parseSession(event.data.sessionText);
-    if (result.session) result = D.addSession(state.sessions, result.session);
-    if (result.session) state.sessions.push(result.session);
-    $('import-messages').replaceChildren();
-    importMessage('Local helper', result);
-    updateFilters(); renderResults();
-    if (location.hash !== '#results') location.hash = 'results';
-    if (result.session) $('results-content').scrollIntoView({ block: 'start' });
-    event.source.postMessage({ type: result.session ? 'local-ai-lab:received' : 'local-ai-lab:rejected', version: 1 }, event.origin);
-  });
-  if (window.opener) window.opener.postMessage({ type: 'local-ai-lab:ready', version: 1 }, '*');
+  // When the helper serves this site, lab.js passes in this laptop's latest session. It stays in memory on this page.
+  window.LocalLabPortal = {
+    showSession(sessionText) {
+      if (sessionText.length > D.MAX_FILE_BYTES) return;
+      let result = D.parseSession(sessionText);
+      if (result.session && state.sessions.some(s => s.session_id === result.session.session_id)) return;
+      if (result.session) result = D.addSession(state.sessions, result.session);
+      if (result.session) state.sessions.push(result.session);
+      $('import-messages').replaceChildren();
+      if (result.errors && result.errors.length) importMessage('This laptop', result);
+      updateFilters(); renderResults();
+    },
+  };
   async function loadExamples() {
     const generation = ++state.importGeneration;
     $('import-messages').replaceChildren();
-    $('load-examples').disabled = true; $('hero-example').disabled = true;
+    $('load-examples').disabled = true;
     for (const file of ['synthetic-macos.json', 'synthetic-windows.json']) {
       try {
         const response = await fetch('examples/' + file, { credentials: 'omit', cache: 'no-store' });
@@ -206,11 +206,10 @@
         importMessage(file, result);
       } catch (_) { if (generation === state.importGeneration) importMessage(file, { errors: ['The example could not load. Serve the portal over HTTP, or import the files from portal/examples manually.'], warnings: [] }); }
     }
-    $('load-examples').disabled = false; $('hero-example').disabled = false;
+    $('load-examples').disabled = false;
     updateFilters(); renderResults();
   }
   $('load-examples').addEventListener('click', loadExamples);
-  $('hero-example').addEventListener('click', () => { location.hash = 'results'; loadExamples(); });
   $('clear-results').addEventListener('click', () => { ++state.importGeneration; state.sessions = []; $('import-messages').replaceChildren(); $('filter-kind').value = ''; updateFilters(); renderResults(); toast('Imported sessions removed from this tab.'); });
   function updateSelect(id, values, label) {
     const select = $(id), current = select.value; select.replaceChildren();
@@ -249,13 +248,13 @@
       for (let t = 0; t <= 4; t++) {
         const x = left + width * t / 4;
         svg.append(svgNode('line', { x1: x, y1: 15, x2: x, y2: h - 22, stroke: '#e3e8db', 'stroke-dasharray': t ? '2 4' : '0' }));
-        svg.append(svgNode('text', { x, y: h - 3, 'font-size': 8, 'text-anchor': 'middle' }, format(max * t / 4, max < 10 ? 1 : 0)));
+        svg.append(svgNode('text', { x, y: h - 3, 'font-size': 10, 'text-anchor': 'middle' }, format(max * t / 4, max < 10 ? 1 : 0)));
       }
       const details = el('details', undefined, 'chart-data'); details.append(el('summary', 'Read exact chart values')); const list = el('ul');
       series.forEach(({ session, stats }, i) => {
         const y = top + i * 48, name = session.model.name.length > 20 ? session.model.name.slice(0, 18) + '…' : session.model.name;
         const label = svgNode('text', { x: 0, y: y + 2, 'font-size': 10, 'font-weight': 600 }, name); label.append(svgNode('title', {}, session.model.name + ' · ' + session.device.alias)); svg.append(label);
-        svg.append(svgNode('text', { x: 0, y: y + 16, 'font-size': 7.5 }, session.data_kind.toUpperCase() + ' · ' + session.created_at.slice(0, 10)));
+        svg.append(svgNode('text', { x: 0, y: y + 16, 'font-size': 10 }, session.data_kind.toUpperCase() + ' · ' + session.created_at.slice(0, 10)));
         const color = session.data_kind === 'synthetic' ? '#a78432' : '#2f6b55';
         if (stats.count) {
           const x = n => left + width * n / max;
@@ -301,7 +300,7 @@
     box.hidden = !comparable.length; if (!comparable.length) return;
     box.append(el('p', 'PREDICTION → OBSERVATION', 'eyebrow'), el('h2', 'What surprised you?'));
     const wrap = el('div', undefined, 'table-wrap'), table = el('table', undefined, 'prediction-table'), head = el('thead'), tr = el('tr');
-    for (const name of ['Session', 'Predicted TPS', 'Actual TPS', 'Predicted GiB', 'Actual RSS GiB']) { const th = el('th', name); th.scope = 'col'; tr.append(th); } head.append(tr); table.append(head);
+    for (const name of ['Session', 'Your speed guess', 'Measured speed', 'Your memory guess (GiB)', 'Measured memory (GiB)']) { const th = el('th', name); th.scope = 'col'; tr.append(th); } head.append(tr); table.append(head);
     const body = el('tbody');
     for (const session of comparable) {
       const stats = D.aggregate(rows.filter(r => r.session === session)), fallback = session.data_kind === 'measured' ? state.prediction : null;
@@ -310,7 +309,7 @@
       if ((session.predictions.tps === null || session.predictions.ram_gib === null) && fallback) label.append(el('small', 'Uses current tab prediction for missing exported guesses'));
       row.append(label, el('td', format(prediction.tps)), el('td', format(stats.metrics.decode_tps.median)), el('td', format(prediction.ram_gib, 2)), el('td', stats.metrics.peak_rss_mib.median === null ? '—' : format(stats.metrics.peak_rss_mib.median / 1024, 2))); body.append(row);
     }
-    table.append(body); wrap.append(table); box.append(wrap, el('p', 'Actual values are medians of available selected runs. Actual RAM is the median of per-run RSS peaks, converted from MiB to GiB (÷1024). A difference is a question to investigate, not a score for prediction accuracy.', 'fine-print'));
+    table.append(body); wrap.append(table); box.append(wrap, el('p', 'Measured values are the middle result of the selected runs. A difference is a question to investigate, not a score.', 'fine-print'));
   }
   function renderResults() {
     const rows = D.filterRuns(state.sessions, filters()), summary = D.aggregate(rows);
@@ -319,13 +318,13 @@
     $('synthetic-banner').hidden = !rows.some(r => r.session.data_kind === 'synthetic');
     if (!rows.length) {
       $('empty-results').querySelector('h2').textContent = state.sessions.length ? 'No runs match these filters.' : 'Your next discovery starts here.';
-      $('empty-results').querySelector('p').textContent = state.sessions.length ? 'Try another device, model, prompt, or data type.' : 'Run a model locally and import its measured session to see your charts. Synthetic examples are available only when you choose them above.';
+      $('empty-results').querySelector('p').textContent = state.sessions.length ? 'Try another device, model, prompt, or data type.' : 'Run a model on your laptop and bring in the file it saved to see your charts. Made-up examples appear only when you choose them above.';
       return;
     }
     const counts = $('run-counts'); counts.replaceChildren();
     for (const [label, value] of [['total runs', summary.total], ['complete', summary.ok], ['partial', summary.partial], ['failed', summary.failed]]) { const span = el('span'); span.append(el('b', String(value)), document.createTextNode(label)); counts.append(span); }
     const conditions = new Set(rows.map(r => [r.session.device.alias, r.session.model.digest || r.session.model.name, r.session.runtime.version, JSON.stringify(r.session.config), r.session.data_kind].join('|')));
-    $('comparison-caution').textContent = conditions.size > 1 ? 'Multiple conditions are selected. Pooled medians below are descriptive only; use session charts and filters for fair comparisons. Synthetic and measured values must not be combined as evidence.' : 'Summary statistics are recomputed from run records. Imported summary numbers are not trusted. Nulls and failed runs are excluded per metric; zero is retained as a valid recorded value.';
+    $('comparison-caution').textContent = conditions.size > 1 ? 'You have more than one setup selected, so the numbers below mix them together. They give you a rough picture, not a fair comparison. Use the filters to look at one setup at a time, and never mix made-up example data with real measurements.' : 'These numbers are worked out fresh from the individual runs, not copied from the file. Runs that failed, or values that were never recorded, are left out. A real zero still counts.';
     metricCards(summary); renderCharts(rows); renderSessions(rows); predictionComparisons(rows);
     const body = $('runs-table'); body.replaceChildren();
     for (const { session, run } of rows) {

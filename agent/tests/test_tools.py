@@ -148,7 +148,7 @@ class ToolTests(unittest.TestCase):
 
     def test_docstrings_and_schemas_are_llm_facing(self):
         schemas = self.tb.schemas()
-        self.assertEqual(len(schemas), 5)
+        self.assertEqual(len(schemas), 6)  # the five documented tools, plus propose_step (which runs nothing)
         for item in schemas:
             fn = item["function"]
             self.assertGreater(len(fn["description"]), 120)

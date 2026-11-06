@@ -4,10 +4,10 @@
   const MAX_FILE_BYTES = 5 * 1024 * 1024;
   const MAX_SESSIONS = 30;
   const METRICS = Object.freeze({
-    ttft_ms: { label: 'TTFT proxy · first response text', short: 'TTFT proxy', unit: 'ms', max: 86400000, note: 'Client-observed request start to first non-empty response text. Includes prompt processing; not a verified token boundary.' },
-    decode_tps: { label: 'Generation speed', short: 'TPS', unit: 'tokens/s', max: 1000000, note: 'Output tokens divided by runtime-reported decode duration; excludes prompt processing.' },
-    cpu_percent_normalized: { label: 'CPU utilization', short: 'CPU', unit: '%', max: 100, note: 'Process CPU divided by logical core count. This is not GPU utilization.' },
-    peak_rss_mib: { label: 'Peak process memory', short: 'RAM', unit: 'MiB', max: 104857600, note: 'Observed peak resident memory of attributable runtime processes; not GPU memory or total system memory.' }
+    ttft_ms: { label: 'Wait for the first word', short: 'First word', unit: 'ms', max: 86400000, note: 'The wait before the first word appears. It includes the time the model spends reading your message.' },
+    decode_tps: { label: 'Generation speed', short: 'Speed', unit: 'tokens/s', max: 1000000, note: 'How fast the words then flow. Tokens are pieces of words.' },
+    cpu_percent_normalized: { label: 'CPU utilization', short: 'CPU', unit: '%', max: 100, note: 'How busy the processor was, out of 100. A graphics chip doing the work is not counted here.' },
+    peak_rss_mib: { label: 'Peak process memory', short: 'RAM', unit: 'MiB', max: 104857600, note: 'The most memory the model used while it ran. Not the file size, and not what your whole laptop was using.' }
   });
   const own = (o, k) => Object.prototype.hasOwnProperty.call(o, k);
   const object = (x) => x !== null && typeof x === 'object' && !Array.isArray(x) && Object.getPrototypeOf(x) === Object.prototype;

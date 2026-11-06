@@ -81,6 +81,10 @@ class Settings:
     tool_result_chars: int = 4000  # truncate tool output before it goes back to the LLM
     guardrails: bool = True
     router: bool = True            # run the obvious tool before the LLM answers (see router.py)
+    tool_picker: bool = True       # let the LLM choose tools from a fixed list when the router has no rule
+    ram_rule: str = "available"    # "planning" also accepts half of total RAM; the Lab Helper uses it
+    open_answers: bool = False       # True in the Lab Helper: code answers facts first, so the model only explains ideas, without tools
+    approval_required: bool = False  # True in the Lab Helper: tools that load or measure a model only propose a step card
 
     def __post_init__(self):
         self.base_url = validate_local_base_url(self.base_url)

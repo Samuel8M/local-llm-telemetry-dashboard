@@ -84,7 +84,7 @@ class Toolbox:
         info["disk_budget_gib"] = self.settings.disk_budget_gb
         return info
 
-    def check_install(self, up_to_step: int = 5) -> dict:
+    def check_install(self, up_to_step: int = 5, model: str | None = None) -> dict:
         """Verify manual deployment in five bounded steps: Python, runtime presence,
         loopback server, downloaded allow-listed model with provenance, first reply.
         up_to_step must be an integer 1..5. Static checks work before a model exists.
@@ -92,8 +92,14 @@ class Toolbox:
         downloads, changes permissions or bypasses OS security. Return the first
         failing step and a safe next action; first-reply inference is resource gated.
         """
-        validate_tool_args("check_install", {"up_to_step": up_to_step})
+        validate_tool_args("check_install", {"up_to_step": up_to_step, **({"model": model} if model is not None else {})})
+        if model is not None and not any(model == m["ollama_tag"] for m in self.allow_list):
+            model = None  # the model sometimes invents a name such as "any"; check what is really installed instead
+        if self.settings.approval_required:
+            up_to_step = min(up_to_step, 4)  # step 5 loads the model, which is a step the learner approves on its own card
         s, steps, models = self.settings, [], []
+        # When the learner chose a model, the check is about that model and no other.
+        chosen = [model] if model is not None else None
         client = ChatClient(s.base_url, s.agent_model, timeout=60)
 
         def add(n, name, ok, detail, fix=""):
@@ -106,8 +112,8 @@ class Toolbox:
                         "Use Python 3.11+ from python.org in a standard user account."),
             lambda: self._check_runtime(add),
             lambda: self._check_server(add, client, models),
-            lambda: self._check_model(add, models),
-            lambda: self._check_first_prompt(add, models),
+            lambda: self._check_model(add, models, chosen),
+            lambda: self._check_first_prompt(add, models, chosen),
         ]
         for check in checks[:up_to_step]:
             if not check():
@@ -126,14 +132,22 @@ class Toolbox:
 
     def _check_server(self, add, client, models):
         try:
-            models.extend(client.list_models())
-            return add(3, "server", True, f"Local server responds; {len(models)} model identifiers reported.")
+            listed = client.list_models()
+            broken = client.missing_files(listed)
+            models.extend(m for m in listed if m not in broken)
+            note = f" Listed but missing its file, so it can't load: {', '.join(broken)}." if broken else ""
+            return add(3, "server", True, f"Local server responds; {len(models)} model identifiers reported.{note}")
         except LLMError:
             return add(3, "server", False, "Local runtime is not responding.",
                        "Start the already-installed runtime yourself in a standard user session, then recheck. No runtime is started by this tool.")
 
-    def _check_model(self, add, models):
-        candidates = [m for m in models if self._allowed(m)]
+    def _check_model(self, add, models, chosen=None):
+        if chosen:
+            missing = [m for m in chosen if m not in models]
+            if missing:
+                return add(4, "model", False, f"{missing[0]} is not installed in the responding local runtime.",
+                           f"Approve the download step for {missing[0]}, or run its command yourself, then check again.")
+        candidates = [m for m in (chosen or models) if self._allowed(m)]
         if not candidates:
             return add(4, "model", False, "No exact allow-listed model identifier is available.",
                        "Review recommend_model, then manually download an exact allowed model. Unrecognized models and paths will not be used.")
@@ -146,8 +160,8 @@ class Toolbox:
                 errors.append(str(exc))
         return add(4, "model", False, errors[0], "Resolve the documented provenance or total-resource constraint; do not bypass it.")
 
-    def _check_first_prompt(self, add, models):
-        for model in models:
+    def _check_first_prompt(self, add, models, chosen=None):
+        for model in (chosen or models):
             if self._allowed(model):
                 try:
                     self.ensure_model_ready(model)
@@ -215,6 +229,8 @@ class Toolbox:
         row = next((r for r in state["inventory"] if r["name"] == model), None)
         if row is None:
             raise ValueError("The exact allow-listed model is not installed in the responding local runtime.")
+        if ChatClient(self.settings.base_url, model).missing_files([model]):
+            raise ValueError(f"Ollama lists {model}, but its model file is missing from the models folder, so it can't load. Approve the download step again to restore it.")
         digest = row.get("digest")
         if not isinstance(digest, str) or not re.fullmatch(r"(?:sha256:)?[a-fA-F0-9]{64}", digest):
             raise ValueError("Runtime model digest is unavailable or invalid; provenance cannot be recorded.")
@@ -232,7 +248,11 @@ class Toolbox:
             if hw["free_disk_gb"] < 2:
                 raise ValueError("Less than 2 GiB disk reserve is available. Stop; the helper will not remove files.")
             catalog = next(m for m in self.allow_list if m["ollama_tag"] == model)
-            if hw["available_ram_gb"] < catalog["min_ram_gb"]:
+            # Mac free RAM swings a lot, so "planning" lets the OS reclaim memory when half of total covers it.
+            room = hw["available_ram_gb"]
+            if self.settings.ram_rule == "planning" and room >= 1:
+                room = max(room, hw.get("total_ram_gb", 0) * 0.5)
+            if room < catalog["min_ram_gb"]:
                 raise ValueError("Currently available RAM is below the catalog's provisional minimum. Stop and choose a smaller supported model.")
         budget = {k: v for k, v in state.items() if k != "inventory"}
         budget.update({"selected_model_gib": round(selected_model_gib, 6),
@@ -253,6 +273,18 @@ class Toolbox:
         accepted. Only one benchmark may run at once. Missing metrics remain null
         with their reason. The returned summary retains legacy keys for the helper.
         """
+        if self.settings.approval_required:
+            args = {"model": model, "repeats": repeats, **({"guess_tps": guess_tps} if guess_tps is not None else {}),
+                    **({"guess_ram_gb": guess_ram_gb} if guess_ram_gb is not None else {})}
+            return {"proposed": {"action": "benchmark", "args": args},
+                    "note": "Not run: a measurement takes minutes and uses the laptop, so the learner must approve it. "
+                            "An approval card has been added below your reply. Tell the learner to approve it there; do not write a command for it."}
+        return self.measure_now(model, repeats=repeats, guess_tps=guess_tps, guess_ram_gb=guess_ram_gb)
+
+    def measure_now(self, model: str, repeats: int = 3,
+                    guess_tps: float | None = None, guess_ram_gb: float | None = None) -> dict:
+        """Really run the measurement. The helper calls this after the learner approves the step;
+        it is not in _PARAMS, so the model can neither see it nor call it."""
         args = {"model": model, "repeats": repeats}
         args.update({k: v for k, v in {"guess_tps": guess_tps, "guess_ram_gb": guess_ram_gb}.items() if v is not None})
         try:
@@ -364,6 +396,31 @@ class Toolbox:
             return {}
         return {m: {"median_tps": round(statistics.median(v), 1), "runs": len(v)} for m, v in by_model.items()}
 
+    def propose_step(self, step: str, model: str | None = None, app: str | None = None) -> dict:
+        """Propose one of the lab's fixed steps for the learner to approve: start_runtime, pull_model (download),
+        check_install, first_prompt (say hello), benchmark (measure), remove_model; or, for an app the lab lists,
+        install_app, check_app, remove_app. Nothing runs until the learner approves the card. Use this whenever the
+        learner asks the lab to do something to their laptop, instead of writing a command."""
+        from .actions import APP_ACTIONS, REGISTRY
+        from .apps import APPS
+        if not isinstance(step, str) or step not in REGISTRY or REGISTRY[step].kind != "action":
+            raise ValueError("Unknown step. Choose one of the lab's fixed steps.")
+        if step in APP_ACTIONS:
+            if app not in APPS:
+                raise ValueError("Choose one of the lab's listed apps.")
+            return {"proposed": {"action": step, "args": {"app": app}},
+                    "note": "An approval card for this step has been added below your reply. Tell the learner to read it and "
+                            "approve it there; do not write a command for it."}
+        validate_tool_args("run_benchmark", {"model": model})
+        if not self._allowed(model):
+            raise ValueError(f"'{model}' is not on the allow-list.")
+        args = {"model": model} if "model" in REGISTRY[step].args else {}
+        if step == "check_install":
+            args["up_to_step"] = 4
+        return {"proposed": {"action": step, "args": args},
+                "note": "An approval card for this step has been added below your reply. Tell the learner to read it and "
+                        "approve it there; do not write a command for it."}
+
     def call(self, name: str, args: dict) -> dict:
         try:
             validate_tool_args(name, args)
@@ -381,7 +438,8 @@ class Toolbox:
 
 _PARAMS = {
     "check_hardware": ({}, []),
-    "check_install": ({"up_to_step": {"type": "integer", "minimum": 1, "maximum": 5}}, []),
+    "check_install": ({"up_to_step": {"type": "integer", "minimum": 1, "maximum": 5},
+                       "model": {"type": "string", "maxLength": 128, "description": "One exact model tag from the allow-list. Leave this out to check every installed allowed model."}}, []),
     "run_benchmark": ({
         "model": {"type": "string", "maxLength": 128, "description": "Exact allowed Ollama tag, never a file path or URL."},
         "repeats": {"type": "integer", "minimum": 1, "maximum": 3, "description": "Measured repetitions per prompt, default 3."},
@@ -389,6 +447,11 @@ _PARAMS = {
         "guess_ram_gb": {"type": "number", "minimum": 0, "maximum": MAX_PREDICTION},
     }, ["model"]),
     "read_logs": ({"log_text": {"type": "string", "maxLength": MAX_LOG_CHARS}}, ["log_text"]),
+    "propose_step": ({
+        "step": {"type": "string", "maxLength": 32, "description": "One of: start_runtime, pull_model, check_install, first_prompt, benchmark, remove_model, install_app, check_app, remove_app."},
+        "model": {"type": "string", "maxLength": 128, "description": "Exact allowed Ollama tag, never a file path or URL. For model steps."},
+        "app": {"type": "string", "maxLength": 32, "description": "One of the lab's listed app ids, e.g. vscode or obsidian. For app steps."},
+    }, ["step"]),
     "recommend_model": ({
         "available_ram_gb": {"type": "number", "minimum": 0, "maximum": MAX_PREDICTION},
         "free_disk_gb": {"type": "number", "minimum": 0, "maximum": MAX_PREDICTION},

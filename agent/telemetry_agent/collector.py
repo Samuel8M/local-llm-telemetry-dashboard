@@ -393,7 +393,7 @@ def run_benchmark(model: str, settings: Settings, repeats: int = 3,
         summary = summarize_runs(rows)
         summary.update({"model": model, "runtime": settings.runtime, "machine_label": label,
                         "warmup_round_trip_s": warmup_s,
-                        "note": "CPU excludes GPU work. RSS may double-count shared pages. Background workloads and cache affect results.",
+                        "note": "The processor number leaves out the graphics chip. Memory can count shared pieces twice. Other open apps and caching also affect results.",
                         "quality_flags": (["warmup_failed"] if warmup_failed else [])
                                          + (["runtime_version_unavailable"] if metadata["runtime_version"] is None else [])
                                          + (["model_digest_unavailable"] if metadata["model_digest"] is None else [])})

@@ -12,46 +12,50 @@
       "ollama_tag": "qwen2.5:0.5b",
       "hf_repo": "Qwen/Qwen2.5-0.5B-Instruct-GGUF",
       "hf_file": "qwen2.5-0.5b-instruct-q4_k_m.gguf",
-      "good_for": "very small teaching candidate for constrained memory; evaluate answer quality"
+      "good_for": "very small teaching candidate for constrained memory; evaluate answer quality",
+      "about": "The smallest and fastest. Good for very low-memory laptops, but expect weak answers."
     },
     {
       "id": "llama-3.2-1b-instruct-q4_k_m",
       "family": "Llama 3.2",
       "params_b": 1.2,
       "quant": "Q4_K_M",
-      "size_gb": 0.8,
+      "size_gb": 1.3,
       "min_ram_gb": 2.5,
       "license_gate": true,
       "ollama_tag": "llama3.2:1b",
       "hf_repo": "bartowski/Llama-3.2-1B-Instruct-GGUF",
       "hf_file": "Llama-3.2-1B-Instruct-Q4_K_M.gguf",
-      "good_for": "small and quick; Meta license applies"
+      "good_for": "small and quick; Meta license applies",
+      "about": "Small and quick. Meta's license applies."
     },
     {
       "id": "qwen2.5-1.5b-instruct-q4_k_m",
       "family": "Qwen 2.5",
       "params_b": 1.5,
       "quant": "Q4_K_M",
-      "size_gb": 1.1,
+      "size_gb": 1.0,
       "min_ram_gb": 3.0,
       "license_gate": false,
       "ollama_tag": "qwen2.5:1.5b",
       "hf_repo": "Qwen/Qwen2.5-1.5B-Instruct-GGUF",
       "hf_file": "qwen2.5-1.5b-instruct-q4_k_m.gguf",
-      "good_for": "default small teaching candidate; verify actual runtime size and available memory"
+      "good_for": "default small teaching candidate; verify actual runtime size and available memory",
+      "about": "Our starting model. About 1 GB, with no license step."
     },
     {
       "id": "gemma-2-2b-it-q4_k_m",
       "family": "Gemma 2",
       "params_b": 2.6,
       "quant": "Q4_K_M",
-      "size_gb": 1.7,
+      "size_gb": 1.6,
       "min_ram_gb": 4.0,
       "license_gate": true,
       "ollama_tag": "gemma2:2b",
       "hf_repo": "bartowski/gemma-2-2b-it-GGUF",
       "hf_file": "gemma-2-2b-it-Q4_K_M.gguf",
-      "good_for": "compact teaching alternative; verify Gemma license terms"
+      "good_for": "compact teaching alternative; verify Gemma license terms",
+      "about": "A compact alternative. Google's Gemma license applies."
     },
     {
       "id": "qwen2.5-3b-instruct-q4_k_m",
@@ -60,11 +64,12 @@
       "quant": "Q4_K_M",
       "size_gb": 1.9,
       "min_ram_gb": 4.5,
-      "license_gate": false,
+      "license_gate": true,
       "ollama_tag": "qwen2.5:3b",
       "hf_repo": "Qwen/Qwen2.5-3B-Instruct-GGUF",
       "hf_file": "qwen2.5-3b-instruct-q4_k_m.gguf",
-      "good_for": "agent-model candidate; tool selection must be evaluated with the local runtime"
+      "good_for": "agent-model candidate; tool selection must be evaluated with the local runtime",
+      "about": "A step up. It chose tools better than 1.5B in our tests, and needs more memory. Unlike the other Qwen sizes here, it uses the Qwen Research license."
     },
     {
       "id": "llama-3.2-3b-instruct-q4_k_m",
@@ -77,20 +82,22 @@
       "ollama_tag": "llama3.2:3b",
       "hf_repo": "bartowski/Llama-3.2-3B-Instruct-GGUF",
       "hf_file": "Llama-3.2-3B-Instruct-Q4_K_M.gguf",
-      "good_for": "teaching alternative; verify Meta license terms"
+      "good_for": "teaching alternative; verify Meta license terms",
+      "about": "A similar size to Qwen 3B, as another option to compare. Meta's license applies."
     },
     {
       "id": "phi-3.5-mini-instruct-q4_k_m",
       "family": "Phi 3.5",
       "params_b": 3.8,
       "quant": "Q4_K_M",
-      "size_gb": 2.4,
+      "size_gb": 2.2,
       "min_ram_gb": 5.5,
       "license_gate": false,
       "ollama_tag": "phi3.5",
       "hf_repo": "bartowski/Phi-3.5-mini-instruct-GGUF",
       "hf_file": "Phi-3.5-mini-instruct-Q4_K_M.gguf",
-      "good_for": "larger teaching alternative; evaluate quality and speed on the actual device"
+      "good_for": "larger teaching alternative; evaluate quality and speed on the actual device",
+      "about": "Larger, and likely slower than the 3B models. Measure it on your laptop."
     },
     {
       "id": "mistral-7b-instruct-q4_k_m",
@@ -103,7 +110,8 @@
       "ollama_tag": "mistral:7b",
       "hf_repo": "bartowski/Mistral-7B-Instruct-v0.3-GGUF",
       "hf_file": "Mistral-7B-Instruct-v0.3-Q4_K_M.gguf",
-      "good_for": "larger optional model; evaluate memory fit and total download budget first"
+      "good_for": "larger optional model; evaluate memory fit and total download budget first",
+      "about": "A large model, for laptops with plenty of free memory."
     },
     {
       "id": "qwen2.5-7b-instruct-q4_k_m",
@@ -116,7 +124,8 @@
       "ollama_tag": "qwen2.5:7b",
       "hf_repo": "Qwen/Qwen2.5-7B-Instruct-GGUF",
       "hf_file": "qwen2.5-7b-instruct-q4_k_m-00001-of-00002.gguf",
-      "good_for": "large optional model; verify split files, memory fit, and total download budget first"
+      "good_for": "large optional model; verify split files, memory fit, and total download budget first",
+      "about": "The largest we allow. Only for laptops with lots of free memory."
     }
   ]
 }

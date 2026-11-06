@@ -17,6 +17,8 @@ Every collection records case IDs, model settings, chosen tools, final replies, 
 
 The candidate acceptance cases are committed so they can be reproduced. If the team uses them to tune code or prompts, classify them as development cases and create a fresh held-out set before the final study. These files do not claim that a blind study has already happened.
 
+These suites run the agent alone. In the Lab Helper, code answers facts about the laptop before the agent is asked, and `agent/tests/test_answers.py` covers that layer. Neither one is a novice study.
+
 ## Independent human review
 
 ```text
@@ -29,7 +31,7 @@ No score is inferred from a matching catalog ID or from an absence of regex viol
 
 ## Pilot and platform records
 
-Copy `templates/pilot-record.csv` and `templates/platform-record.csv` into a private results directory. Recruit five consenting target novices; explain what is recorded and agree on deletion timing. Do not collect passwords, student IDs, or personal log excerpts. Record all attempted participants and paired pre/post scores, including failures and high baseline scores.
+`pilot-kit/README.md` is the step-by-step protocol for one 45-minute pilot, with an observation sheet, a timing log and the frozen quiz key. Start there. Copy `templates/pilot-record.csv` and `templates/platform-record.csv` into a private results directory. Recruit five consenting target novices; explain what is recorded and agree on deletion timing. Do not collect passwords, student IDs, or personal log excerpts. Record all attempted participants and paired pre/post scores, including failures and high baseline scores.
 
 The portal provides the ten-question quiz, optional device-local saving, and anonymous JSON export. Its score is practice/formative evidence. An observed, independently administered pilot with a frozen scoring key is still required to evaluate learning. A five-person sample does not establish general educational efficacy.
 

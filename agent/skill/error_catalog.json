@@ -67,12 +67,13 @@
         "'llama-server' is not recognized",
         "command not found: llama-server",
         "command not found: ollama",
-        "'ollama' is not recognized"
+        "'ollama' is not recognized",
+        "ollama:? (command )?not found"
       ],
       "cause": "The terminal can't find the runtime program. It's not on your PATH, or you're in a different folder.",
       "fix": [
-        "cd into the folder where you unzipped llama.cpp and run it with ./llama-server (macOS) or .\\llama-server.exe (Windows).",
-        "If you use Ollama, open the Ollama app once, then open a new terminal window."
+        "If you use Ollama (this lab's default), open the Ollama app once, then open a new terminal window.",
+        "If you use llama.cpp, cd into the folder where you unzipped it and run ./llama-server (macOS) or .\\llama-server.exe (Windows)."
       ],
       "learn": "runtime"
     },
@@ -118,7 +119,7 @@
       "cause": "Another program (often a second copy of the model server) is already using that port.",
       "fix": [
         "Check whether a model server is already running; if so, just use it.",
-        "Or start on a different port: ./llama-server -m <model.gguf> --port 8081, then set AGENT_BASE_URL=http://localhost:8081/v1"
+        "With Ollama, the usual cause is that it's already running, so check for its icon and use that copy. Don't force-stop anything."
       ],
       "learn": "ports_servers"
     },
@@ -132,10 +133,10 @@
         "ECONNREFUSED",
         "Could not reach http"
       ],
-      "cause": "The model server isn't running, or it's on a different port than the dashboard expects.",
+      "cause": "The model server (Ollama) isn't running, or it's on a different port than the lab expects.",
       "fix": [
-        "Start the server in its own terminal window and leave it open (Ollama: open the app; llama.cpp: ./llama-server -m <model.gguf>).",
-        "Check that the port in AGENT_BASE_URL matches the one the server printed."
+        "Open the Ollama app and leave it running. You should see its icon in the menu bar or system tray.",
+        "Then try again. Ollama listens on port 11434 by default."
       ],
       "learn": "ports_servers"
     },
@@ -187,7 +188,7 @@
       "cause": "The model plus its context needs more free RAM than your laptop has right now.",
       "fix": [
         "Close big apps (browsers with many tabs, video calls) and retry.",
-        "Pick a smaller model or quantization: ask the agent to run recommend_model.",
+        "Pick a smaller model or quantization: ask the assistant which model fits this laptop.",
         "Lower the context size, e.g. -c 2048."
       ],
       "learn": "ram_vs_model_size"
@@ -247,7 +248,8 @@
       "patterns": [
         "not found, try pulling it first",
         "pull model manifest: file does not exist",
-        "model .* not found"
+        "model .* not found",
+        "model (\\S+ )?not found"
       ],
       "cause": "The model tag isn't downloaded, or the tag name is misspelled.",
       "fix": [
@@ -315,7 +317,7 @@
       ],
       "cause": "The runtime you downloaded was built for another processor (e.g. x64 vs Apple Silicon arm64).",
       "fix": [
-        "Run check_hardware to see your CPU architecture.",
+        "Ask the assistant to check your hardware, or look under Your laptop in Deploy, to see your CPU architecture.",
         "Download the matching release: macOS Apple Silicon → arm64; Intel Mac → x64; most Windows laptops → win-x64 (cpu or vulkan build)."
       ],
       "learn": "cpu_architecture"

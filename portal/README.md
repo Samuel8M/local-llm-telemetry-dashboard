@@ -1,8 +1,10 @@
 # Local AI Lab learning portal
 
-Open the [published site](https://aryawuyitong.github.io/local-llm-telemetry-dashboard/). It serves only this static `portal/` directory; the local helper and model stay on each learner's computer.
+Open the [published site](https://aryawuyitong.github.io/local-llm-telemetry-dashboard/). It serves only this static `portal/` directory; the local helper and model stay on each learner's computer. The Lab Helper serves this same directory from the learner's laptop; `lab.js` and `lab.css` switch on setup, downloads, the assistant and My lab only there, when the page has the helper's launch token.
 
 The Deploy view now gives the complete sequence for a real experiment: install Ollama and Python, download and open the repository folder, enter `agent/`, create the Python environment, start the private helper, download a suitable model, run the benchmark there, and import its JSON here. Learners who only want lessons, quizzes, or synthetic example results can stay on the public site without installing anything.
+
+`lab-data.js` is generated from `agent/skill` by `scripts/sync_portal_data.py`; edit the agent's files, then rerun that script.
 
 A buildless, dependency-free teaching and interpretation interface. It has four views:
 
